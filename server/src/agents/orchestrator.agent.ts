@@ -4,7 +4,7 @@ import { WebSearchAgent } from './websearch.agent';
 import { PhoneCallAgent } from './phonecall.agent';
 import { NotificationAgent } from './notification.agent';
 import { waitForApproval } from '../services/approval.service';
-import * as stdb from '../services/spacetimedb.service';
+import * as db from '../services/db.service';
 import { env } from '../config/env';
 import { ORCHESTRATOR_TOOLS, ORCHESTRATOR_SYSTEM_PROMPT } from './tools';
 
@@ -12,7 +12,7 @@ export class OrchestratorAgent extends BaseAgent {
   private genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
   private notifier: NotificationAgent;
 
-  constructor(threadId: number, agentMessageId: number | null = null) {
+  constructor(threadId: string, agentMessageId: string | null = null) {
     super(threadId, agentMessageId);
     this.notifier = new NotificationAgent(threadId);
   }
@@ -24,7 +24,6 @@ export class OrchestratorAgent extends BaseAgent {
       systemInstruction: ORCHESTRATOR_SYSTEM_PROMPT,
     });
 
-    // Load thread history for context
     const history = await this.buildHistory(userMessage);
 
     await this.reportStep({
@@ -33,11 +32,9 @@ export class OrchestratorAgent extends BaseAgent {
       timestamp: Date.now(),
     });
 
-    const chat = model.startChat({ history: history.slice(0, -1) }); // history without last user message
-
+    const chat = model.startChat({ history: history.slice(0, -1) });
     let response = await chat.sendMessage(userMessage);
 
-    // Agentic loop — keep going while Gemini returns function calls
     let iterations = 0;
     const MAX_ITERATIONS = 20;
 
@@ -47,9 +44,8 @@ export class OrchestratorAgent extends BaseAgent {
       const parts: Part[] = candidate?.content?.parts ?? [];
 
       const functionCallParts = parts.filter(p => p.functionCall);
-      if (functionCallParts.length === 0) break; // Gemini is done
+      if (functionCallParts.length === 0) break;
 
-      // Dispatch all function calls in parallel
       const functionResults = await Promise.allSettled(
         functionCallParts.map(async (part) => {
           const { name, args } = part.functionCall!;
@@ -64,7 +60,9 @@ export class OrchestratorAgent extends BaseAgent {
       );
 
       const results: Part[] = functionResults.map(r =>
-        r.status === 'fulfilled' ? r.value : { functionResponse: { name: 'unknown', response: { error: 'Failed' } } } as FunctionResponsePart
+        r.status === 'fulfilled'
+          ? r.value
+          : ({ functionResponse: { name: 'unknown', response: { error: 'Failed' } } } as FunctionResponsePart)
       );
 
       response = await chat.sendMessage(results);
@@ -73,7 +71,7 @@ export class OrchestratorAgent extends BaseAgent {
     const finalText = response.response.text();
 
     if (finalText) {
-      await stdb.insertMessage(this.threadId, 'agent', finalText, { type: 'final' });
+      await db.insertMessage(this.threadId, 'agent', finalText, { type: 'final' });
     }
 
     return finalText;
@@ -101,7 +99,6 @@ export class OrchestratorAgent extends BaseAgent {
         const options = args.options as Array<{ label: string; details: string; price?: string; recommended?: boolean }>;
         await this.notifier.sendApprovalRequest(args.summary as string, options);
 
-        // Suspend until user responds
         const selectedIndex = await waitForApproval(this.threadId);
         const selected = options[selectedIndex];
 
@@ -122,21 +119,18 @@ export class OrchestratorAgent extends BaseAgent {
 
   private async buildHistory(latestMessage: string): Promise<Content[]> {
     try {
-      const messages = await stdb.getMessagesByThread(this.threadId);
+      const messages = await db.getMessagesByThread(this.threadId);
       const history: Content[] = [];
 
       for (const msg of messages) {
         if (msg.role === 'user') {
           history.push({ role: 'user', parts: [{ text: msg.content }] });
-        } else if (msg.role === 'agent') {
+        } else if (msg.role === 'agent' && msg.content) {
           history.push({ role: 'model', parts: [{ text: msg.content }] });
         }
-        // Skip system messages from history
       }
 
-      // Add the current user message at the end
       history.push({ role: 'user', parts: [{ text: latestMessage }] });
-
       return history;
     } catch {
       return [{ role: 'user', parts: [{ text: latestMessage }] }];

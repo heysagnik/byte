@@ -20,7 +20,7 @@
     "react-dom": "^19.1.0",
     "react-refresh": "^0.17.0",
     "react-router-dom": "^7.6.0",
-    "spacetimedb": "^2.1.0",
+    "socket.io-client": "^4.8.3",
     "tailwindcss": "^3.4.17",
     "zustand": "^5.0.5"
   },

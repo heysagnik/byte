@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import { z } from 'zod';
+import { Types } from 'mongoose';
 import { AuthRequest } from '../middleware/auth.middleware';
-import * as stdb from '../services/spacetimedb.service';
+import * as db from '../services/db.service';
 import { resolveApproval, hasPendingApproval } from '../services/approval.service';
 import { OrchestratorAgent } from '../agents/orchestrator.agent';
 
@@ -17,6 +18,10 @@ const ApproveSchema = z.object({
   optionIndex: z.number().int().min(0),
 });
 
+function isValidObjectId(id: string): boolean {
+  return Types.ObjectId.isValid(id);
+}
+
 export async function createThread(req: AuthRequest, res: Response): Promise<void> {
   const parse = CreateThreadSchema.safeParse(req.body);
   if (!parse.success) {
@@ -28,13 +33,8 @@ export async function createThread(req: AuthRequest, res: Response): Promise<voi
   const title = parse.data.title ?? 'New conversation';
 
   try {
-    await stdb.createThread(userId, title);
-    const thread = await stdb.getLatestThread(userId);
-    if (!thread) {
-      res.status(500).json({ error: 'Failed to create thread' });
-      return;
-    }
-    res.status(201).json({ id: thread.id, title: thread.title });
+    const thread = await db.createThread(userId, title);
+    res.status(201).json(db.serializeThread(thread));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to create thread';
     res.status(500).json({ error: message });
@@ -44,8 +44,8 @@ export async function createThread(req: AuthRequest, res: Response): Promise<voi
 export async function getThreads(req: AuthRequest, res: Response): Promise<void> {
   const userId = req.user!.userId;
   try {
-    const threads = await stdb.getThreadsByUser(userId);
-    res.json({ threads });
+    const threads = await db.getThreadsByUser(userId);
+    res.json({ threads: threads.map(db.serializeThread) });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch threads';
     res.status(500).json({ error: message });
@@ -53,8 +53,8 @@ export async function getThreads(req: AuthRequest, res: Response): Promise<void>
 }
 
 export async function sendMessage(req: AuthRequest, res: Response): Promise<void> {
-  const threadId = parseInt(req.params['id'] as string, 10);
-  if (isNaN(threadId)) {
+  const threadId = req.params['id'] as string;
+  if (!isValidObjectId(threadId)) {
     res.status(400).json({ error: 'Invalid thread ID' });
     return;
   }
@@ -69,19 +69,16 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
 
   try {
     // Insert user message
-    await stdb.insertMessage(threadId, 'user', content, {});
+    await db.insertMessage(threadId, 'user', content, {});
 
-    // Create a placeholder agent message that will be updated with steps
-    await stdb.insertMessage(threadId, 'agent', '', {
+    // Insert placeholder agent message
+    const agentMsg = await db.insertMessage(threadId, 'agent', '', {
       type: 'thinking',
       steps: [],
     });
+    const agentMessageId = agentMsg._id.toString();
 
-    // Get the placeholder message ID for live step updates
-    const agentMsg = await stdb.getLatestMessage(threadId, 'agent');
-    const agentMessageId = agentMsg?.id ?? null;
-
-    // Fire orchestrator in the background (don't await)
+    // Fire orchestrator in background
     void (async () => {
       const orchestrator = new OrchestratorAgent(threadId, agentMessageId);
       try {
@@ -89,7 +86,7 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
       } catch (err) {
         console.error(`[orchestrator] Error in thread ${threadId}:`, err);
         const errMsg = err instanceof Error ? err.message : 'Agent encountered an error';
-        await stdb.insertMessage(threadId, 'system', `Error: ${errMsg}`, { type: 'error' });
+        await db.insertMessage(threadId, 'system', `Error: ${errMsg}`, { type: 'error' });
       }
     })();
 
@@ -101,8 +98,8 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
 }
 
 export async function approveOption(req: AuthRequest, res: Response): Promise<void> {
-  const threadId = parseInt(req.params['id'] as string, 10);
-  if (isNaN(threadId)) {
+  const threadId = req.params['id'] as string;
+  if (!isValidObjectId(threadId)) {
     res.status(400).json({ error: 'Invalid thread ID' });
     return;
   }
@@ -123,15 +120,15 @@ export async function approveOption(req: AuthRequest, res: Response): Promise<vo
 }
 
 export async function getMessages(req: AuthRequest, res: Response): Promise<void> {
-  const threadId = parseInt(req.params['id'] as string, 10);
-  if (isNaN(threadId)) {
+  const threadId = req.params['id'] as string;
+  if (!isValidObjectId(threadId)) {
     res.status(400).json({ error: 'Invalid thread ID' });
     return;
   }
 
   try {
-    const messages = await stdb.getMessagesByThread(threadId);
-    res.json({ messages });
+    const messages = await db.getMessagesByThread(threadId);
+    res.json({ messages: messages.map(db.serializeMessage) });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch messages';
     res.status(500).json({ error: message });

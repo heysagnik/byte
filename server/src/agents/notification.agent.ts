@@ -1,10 +1,10 @@
-import * as stdb from '../services/spacetimedb.service';
+import * as db from '../services/db.service';
 
 export class NotificationAgent {
-  constructor(private readonly threadId: number) {}
+  constructor(private readonly threadId: string) {}
 
   async send(message: string, type: 'info' | 'success' | 'error' | 'waiting'): Promise<string> {
-    await stdb.insertMessage(this.threadId, 'system', message, { type });
+    await db.insertMessage(this.threadId, 'system', message, { type });
     return `Notification sent: ${message}`;
   }
 
@@ -12,7 +12,7 @@ export class NotificationAgent {
     summary: string,
     options: Array<{ label: string; details: string; price?: string; recommended?: boolean }>
   ): Promise<string> {
-    await stdb.insertMessage(this.threadId, 'system', summary, {
+    await db.insertMessage(this.threadId, 'system', summary, {
       type: 'waiting_approval',
       options,
     });

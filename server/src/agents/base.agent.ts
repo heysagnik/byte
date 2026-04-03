@@ -1,4 +1,4 @@
-import * as stdb from '../services/spacetimedb.service';
+import * as db from '../services/db.service';
 
 export interface AgentStep {
   type: 'thinking' | 'searching' | 'calling' | 'result' | 'waiting_approval' | 'error';
@@ -6,13 +6,12 @@ export interface AgentStep {
   timestamp: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export abstract class BaseAgent<TInput = string> {
   protected steps: AgentStep[] = [];
 
   constructor(
-    protected readonly threadId: number,
-    protected readonly agentMessageId: number | null = null
+    protected readonly threadId: string,
+    protected readonly agentMessageId: string | null = null
   ) {}
 
   abstract run(input: TInput): Promise<string>;
@@ -23,7 +22,7 @@ export abstract class BaseAgent<TInput = string> {
 
     if (this.agentMessageId !== null) {
       try {
-        await stdb.updateMessageMetadata(this.agentMessageId, {
+        await db.updateMessageMetadata(this.agentMessageId, {
           steps: this.steps,
           lastUpdated: Date.now(),
         });

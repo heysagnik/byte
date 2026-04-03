@@ -11,10 +11,7 @@ export default function MessageBubble({ message, threadId }: MessageBubbleProps)
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
 
-  let metadata: Record<string, unknown> = {};
-  try {
-    if (message.metadata) metadata = JSON.parse(message.metadata) as Record<string, unknown>;
-  } catch { /* ignore */ }
+  const metadata: Record<string, unknown> = message.metadata ?? {};
 
   const isThinking = !message.content && metadata['type'] === 'thinking';
 

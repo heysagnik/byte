@@ -10,15 +10,11 @@ interface PendingApproval {
   timer: NodeJS.Timeout;
 }
 
-const pending = new Map<number, PendingApproval>();
+const pending = new Map<string, PendingApproval>();
 
 const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
-/**
- * Called by the orchestrator to pause and wait for user approval.
- * Returns the selected option index when the user responds.
- */
-export function waitForApproval(threadId: number): Promise<number> {
+export function waitForApproval(threadId: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(threadId);
@@ -29,10 +25,7 @@ export function waitForApproval(threadId: number): Promise<number> {
   });
 }
 
-/**
- * Called by the thread controller when POST /api/threads/:id/approve arrives.
- */
-export function resolveApproval(threadId: number, optionIndex: number): boolean {
+export function resolveApproval(threadId: string, optionIndex: number): boolean {
   const p = pending.get(threadId);
   if (!p) return false;
   clearTimeout(p.timer);
@@ -41,6 +34,6 @@ export function resolveApproval(threadId: number, optionIndex: number): boolean 
   return true;
 }
 
-export function hasPendingApproval(threadId: number): boolean {
+export function hasPendingApproval(threadId: string): boolean {
   return pending.has(threadId);
 }
