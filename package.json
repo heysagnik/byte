@@ -1,0 +1,15 @@
+{
+  "name": "byte-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "frontend",
+    "server"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:server": "npm run dev --workspace=server",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:server": "npm run build --workspace=server"
+  }
+}
