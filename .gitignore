@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+frontend/dist/
+*.local
+
+# Environment variables
+.env
+server/.env
+frontend/.env
+
+# TypeScript cache
+*.tsbuildinfo
+*.tmp/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# SpacetimeDB build artifacts
+spacetimedb-module/target/
+spacetimedb-module/spacetimedb/dist/
