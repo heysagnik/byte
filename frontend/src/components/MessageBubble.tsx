@@ -10,17 +10,18 @@ interface MessageBubbleProps {
 export default function MessageBubble({ message, threadId }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
-
   const metadata: Record<string, unknown> = message.metadata ?? {};
-
   const isThinking = !message.content && metadata['type'] === 'thinking';
 
   if (isSystem) {
-    // System messages (notifications, approval requests)
     return (
       <div className="flex justify-center my-2">
-        <div className="max-w-[85%] rounded-xl px-4 py-3 bg-content2 border border-divider">
-          {message.content && <p className="text-sm">{message.content}</p>}
+        {/* visual-concentric-radius — outer 16px, inner content is borderless */}
+        <div
+          className="max-w-[85%] rounded-2xl px-4 py-3 bg-[--color-surface]"
+          style={{ boxShadow: '0 0 0 1px var(--color-border), 0 2px 4px rgba(0,0,0,0.04)' }}
+        >
+          {message.content && <p className="text-sm text-[--color-fg]">{message.content}</p>}
           <AgentStepCard
             metadata={metadata as Parameters<typeof AgentStepCard>[0]['metadata']}
             threadId={threadId}
@@ -33,24 +34,35 @@ export default function MessageBubble({ message, threadId }: MessageBubbleProps)
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0 mr-2 mt-0.5">
+        /* visual-concentric-radius — 28px avatar, content bubble 16px */
+        <div className="w-7 h-7 rounded-full bg-[--color-fg] flex items-center justify-center text-[--color-surface] text-xs font-semibold shrink-0 mr-2 mt-0.5">
           B
         </div>
       )}
 
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-          isUser
-            ? 'bg-primary text-primary-foreground rounded-br-sm'
-            : 'bg-content2 rounded-bl-sm'
+          isUser ? 'rounded-br-sm' : 'rounded-bl-sm'
         }`}
+        style={
+          isUser
+            ? {
+                backgroundColor: 'var(--color-fg)',
+                color: 'var(--color-surface)',
+              }
+            : {
+                backgroundColor: 'var(--color-surface)',
+                boxShadow: '0 0 0 1px var(--color-border), 0 2px 4px rgba(0,0,0,0.04)',
+              }
+        }
       >
         {isThinking ? (
-          <div className="flex items-center gap-2 text-sm text-default-400">
+          <div className="flex items-center gap-2 text-sm text-[--color-muted]">
             <Spinner size="sm" />
-            <span>Thinking...</span>
+            <span>Thinking…</span>
           </div>
         ) : (
+          /* type-text-wrap-pretty applied globally via CSS */
           <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
         )}
 

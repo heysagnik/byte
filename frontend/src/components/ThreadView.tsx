@@ -10,14 +10,13 @@ interface ThreadViewProps {
 export default function ThreadView({ messages, threadId }: ThreadViewProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-default-400 text-sm">
+      <div className="flex-1 flex items-center justify-center text-[#888880] text-sm">
         Send a message to get started
       </div>
     );

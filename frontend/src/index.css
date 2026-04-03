@@ -1,9 +1,42 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "@heroui/react/styles";
 
+/* ─── Design tokens ──────────────────────────────────────────────────────── */
+@theme {
+  --color-bg:     #f5f4ef;
+  --color-fg:     #1a1a1a;
+  --color-muted:  #888880;
+  --color-border: rgba(0, 0, 0, 0.10);  /* visual-border-alpha-colors */
+  --color-surface: #ffffff;
+
+  /* Consistent spacing scale — visual-consistent-spacing-scale */
+  --spacing-page-x: 1.5rem;   /* 24px */
+  --spacing-page-y: 1rem;     /* 16px */
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;
-  background-color: hsl(var(--heroui-background));
-  color: hsl(var(--heroui-foreground));
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* type-antialiased-on-retina */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* type-text-wrap-pretty */
+  text-wrap: pretty;
+}
+
+/* type-text-wrap-balance-headings */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+}
+
+/* physics-active-state — interactive elements scale on press */
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 150ms ease-out; /* duration-press-hover */
 }

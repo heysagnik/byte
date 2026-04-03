@@ -13,16 +13,11 @@ export default function HomePage() {
   const handleSend = async (message: string) => {
     setSending(true);
     try {
-      // Create a new thread
-      const threadRes = await api.post<{ id: number; title: string }>('/threads', {
+      const threadRes = await api.post<{ id: string; title: string }>('/threads', {
         title: message.slice(0, 80),
       });
       const threadId = threadRes.data.id;
-
-      // Send the message (starts the orchestrator)
       await api.post(`/threads/${threadId}/messages`, { content: message });
-
-      // Navigate to the thread
       navigate(`/thread/${threadId}`);
     } catch (err) {
       console.error('Failed to start conversation:', err);
@@ -31,34 +26,41 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-divider">
-        <span className="font-bold text-lg">byte</span>
+    <div className="min-h-screen flex flex-col bg-[--color-bg]">
+      <header className="flex items-center justify-between px-6 py-4 border-b border-[--color-border]">
+        <span className="font-semibold text-base text-[--color-fg]">byte</span>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-default-400">{user?.email}</span>
-          <Button size="sm" variant="light" onPress={logout}>
+          <span className="text-sm text-[--color-muted]">{user?.email}</span>
+          {/* ux-fitts-target-size — size sm = 32px min */}
+          <Button
+            size="sm"
+            variant="secondary"
+            onPress={logout}
+            className="text-[--color-muted] hover:text-[--color-fg] transition-colors duration-150 ease-out"
+          >
             Sign out
           </Button>
         </div>
       </header>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center gap-8 p-6">
         <div className="text-center">
-          <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            byte
+          {/* type-text-wrap-balance-headings applied globally via CSS */}
+          <h1 className="text-4xl font-semibold text-[--color-fg] mb-3">
+            What shall we think through?
           </h1>
-          <p className="text-default-500 text-lg">Your personal AI agent. Ask me to do anything.</p>
+          <p className="text-[--color-muted] text-base">
+            Your personal AI agent. Ask me to do anything.
+          </p>
         </div>
 
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-2xl flex flex-col gap-2">
           <ChatInput
             onSend={handleSend}
             disabled={sending}
             placeholder="What would you like me to do? (Ctrl+Enter to send)"
           />
-          <p className="text-xs text-default-400 text-center mt-2">
+          <p className="text-xs text-[--color-muted] text-center">
             Try: "Find me the cheapest hotel in Jabalpur for next weekend"
           </p>
         </div>
