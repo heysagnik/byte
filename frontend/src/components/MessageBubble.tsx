@@ -7,71 +7,85 @@ interface MessageBubbleProps {
   threadId: string;
 }
 
+// Renders markdown-style bold (**text**) inline — agent replies use it
+function InlineText({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.startsWith('**') && part.endsWith('**') ? (
+          <strong key={i}>{part.slice(2, -2)}</strong>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export default function MessageBubble({ message, threadId }: MessageBubbleProps) {
   const isUser = message.role === 'user';
-  const isSystem = message.role === 'system';
   const metadata: Record<string, unknown> = message.metadata ?? {};
   const isThinking = !message.content && metadata['type'] === 'thinking';
 
-  if (isSystem) {
+  // ── User message — right-aligned pill bubble ──────────────────────────────
+  if (isUser) {
     return (
-      <div className="flex justify-center my-2">
-        {/* visual-concentric-radius — outer 16px, inner content is borderless */}
+      <div className="flex justify-end py-1">
         <div
-          className="max-w-[85%] rounded-2xl px-4 py-3 bg-[--color-surface]"
-          style={{ boxShadow: '0 0 0 1px var(--color-border), 0 2px 4px rgba(0,0,0,0.04)' }}
+          className="max-w-[70%] rounded-3xl px-4 py-3 text-sm leading-relaxed"
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.06)',
+            color: 'var(--color-fg)',
+            // visual-border-alpha-colors
+            boxShadow: '0 0 0 1px rgba(0,0,0,0.06)',
+          }}
         >
-          {message.content && <p className="text-sm text-[--color-fg]">{message.content}</p>}
-          <AgentStepCard
-            metadata={metadata as Parameters<typeof AgentStepCard>[0]['metadata']}
-            threadId={threadId}
-          />
+          <p className="whitespace-pre-wrap break-words">
+            <InlineText text={message.content} />
+          </p>
         </div>
       </div>
     );
   }
 
+  // ── Agent / system message — left-aligned, no bubble, just text ──────────
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
-      {!isUser && (
-        /* visual-concentric-radius — 28px avatar, content bubble 16px */
-        <div className="w-7 h-7 rounded-full bg-[--color-fg] flex items-center justify-center text-[--color-surface] text-xs font-semibold shrink-0 mr-2 mt-0.5">
-          B
-        </div>
-      )}
-
+    <div className="flex gap-3 py-2">
+      {/* Avatar — small dark circle with "B" initial, visual-concentric-radius */}
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-          isUser ? 'rounded-br-sm' : 'rounded-bl-sm'
-        }`}
-        style={
-          isUser
-            ? {
-                backgroundColor: 'var(--color-fg)',
-                color: 'var(--color-surface)',
-              }
-            : {
-                backgroundColor: 'var(--color-surface)',
-                boxShadow: '0 0 0 1px var(--color-border), 0 2px 4px rgba(0,0,0,0.04)',
-              }
-        }
+        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5 select-none"
+        style={{
+          backgroundColor: 'var(--color-fg)',
+          color: 'var(--color-bg)',
+        }}
+        aria-hidden="true"
       >
+        B
+      </div>
+
+      {/* Content — no card, text sits directly on background */}
+      <div className="flex-1 min-w-0 pt-0.5">
         {isThinking ? (
-          <div className="flex items-center gap-2 text-sm text-[--color-muted]">
+          <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-muted)' }}>
             <Spinner size="sm" />
             <span>Thinking…</span>
           </div>
         ) : (
-          /* type-text-wrap-pretty applied globally via CSS */
-          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+          message.content && (
+            <div
+              className="text-sm leading-relaxed whitespace-pre-wrap break-words"
+              style={{ color: 'var(--color-fg)' }}
+            >
+              <InlineText text={message.content} />
+            </div>
+          )
         )}
 
-        {!isUser && (
-          <AgentStepCard
-            metadata={metadata as Parameters<typeof AgentStepCard>[0]['metadata']}
-            threadId={threadId}
-          />
-        )}
+        <AgentStepCard
+          metadata={metadata as Parameters<typeof AgentStepCard>[0]['metadata']}
+          threadId={threadId}
+        />
       </div>
     </div>
   );

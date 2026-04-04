@@ -34,6 +34,12 @@ h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
 }
 
+/* native-placeholder-styling */
+::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
 /* physics-active-state — interactive elements scale on press */
 button:active:not(:disabled),
 [role="button"]:active:not(:disabled) {

@@ -16,18 +16,24 @@ export default function ThreadView({ messages, threadId }: ThreadViewProps) {
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-[#888880] text-sm">
+      <div
+        className="flex-1 flex items-center justify-center text-sm"
+        style={{ color: 'var(--color-muted)' }}
+      >
         Send a message to get started
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-      {messages.map((msg) => (
-        <MessageBubble key={msg.id.toString()} message={msg} threadId={threadId} />
-      ))}
-      <div ref={bottomRef} />
+    // Centered column matching Claude's ~700px content width
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-3xl mx-auto px-6 py-6 space-y-1">
+        {messages.map((msg) => (
+          <MessageBubble key={msg.id.toString()} message={msg} threadId={threadId} />
+        ))}
+        <div ref={bottomRef} />
+      </div>
     </div>
   );
 }

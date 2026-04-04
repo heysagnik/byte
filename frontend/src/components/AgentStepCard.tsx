@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Chip, Accordion } from '@heroui/react';
 import { api } from '../lib/api';
 
 interface AgentStep {
@@ -21,22 +20,22 @@ interface Metadata {
   options?: ApprovalOption[];
 }
 
-const stepIcons: Record<string, string> = {
-  thinking: '🤔',
-  searching: '🔍',
-  calling: '📞',
-  result: '✅',
-  waiting_approval: '⏳',
-  error: '❌',
+const stepDot: Record<string, string> = {
+  thinking:         'rgba(0,0,0,0.25)',
+  searching:        '#3b82f6',
+  calling:          '#6366f1',
+  result:           '#22c55e',
+  waiting_approval: '#f59e0b',
+  error:            '#ef4444',
 };
 
-const stepColors: Record<string, 'default' | 'primary' | 'success' | 'warning' | 'danger'> = {
-  thinking: 'default',
-  searching: 'primary',
-  calling: 'default',
-  result: 'success',
-  waiting_approval: 'warning',
-  error: 'danger',
+const stepLabel: Record<string, string> = {
+  thinking:         'Thinking',
+  searching:        'Searching',
+  calling:          'Calling',
+  result:           'Done',
+  waiting_approval: 'Waiting',
+  error:            'Error',
 };
 
 interface AgentStepCardProps {
@@ -61,80 +60,99 @@ export default function AgentStepCard({ metadata, threadId }: AgentStepCardProps
   };
 
   return (
-    <div className="mt-3 space-y-2">
+    <div className="mt-3 space-y-3">
+      {/* ── Steps disclosure — native <details> matches Claude's collapsed steps ── */}
       {metadata.steps && metadata.steps.length > 0 && (
-        <Accordion variant="default" className="p-0">
-          <Accordion.Item id="steps" className="py-1">
-            <Accordion.Heading>
-              <Accordion.Trigger>
-                <span className="text-xs text-[--color-muted]">
-                  {metadata.steps.length} step{metadata.steps.length !== 1 ? 's' : ''}
-                </span>
-              </Accordion.Trigger>
-            </Accordion.Heading>
-            <Accordion.Panel>
-              <Accordion.Body>
-                <div className="space-y-1.5 pb-2">
-                  {metadata.steps.map((step, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs">
-                      <Chip
-                        size="sm"
-                        color={stepColors[step.type] ?? 'default'}
-                        variant="flat"
-                        className="shrink-0"
-                      >
-                        {stepIcons[step.type]} {step.type}
-                      </Chip>
-                      <span className="text-[--color-muted] leading-5">{step.content}</span>
-                    </div>
-                  ))}
+        <details className="group">
+          <summary
+            className="flex items-center gap-1.5 text-xs cursor-pointer select-none list-none w-fit"
+            style={{ color: 'var(--color-muted)' }}
+          >
+            {/* Chevron — rotates open */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className="w-3 h-3 transition-transform duration-150 group-open:rotate-90"
+              aria-hidden="true"
+            >
+              <path fillRule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L9.19 8 6.22 5.03a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+            </svg>
+            <span>
+              {metadata.steps.length} step{metadata.steps.length !== 1 ? 's' : ''}
+            </span>
+          </summary>
+
+          <div className="mt-2 pl-4 space-y-2" style={{ borderLeft: '1.5px solid var(--color-border)' }}>
+            {metadata.steps.map((step, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs">
+                {/* Colored dot instead of emoji */}
+                <span
+                  className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: stepDot[step.type] ?? stepDot.thinking }}
+                  aria-label={stepLabel[step.type] ?? step.type}
+                />
+                <div>
+                  <span className="font-medium mr-1.5" style={{ color: 'var(--color-fg)' }}>
+                    {stepLabel[step.type] ?? step.type}
+                  </span>
+                  <span style={{ color: 'var(--color-muted)' }}>{step.content}</span>
                 </div>
-              </Accordion.Body>
-            </Accordion.Panel>
-          </Accordion.Item>
-        </Accordion>
+              </div>
+            ))}
+          </div>
+        </details>
       )}
 
-      {/* ux-von-restorff-emphasis — approval card is visually distinct from chat bubbles */}
+      {/* ── Approval card — ux-von-restorff-emphasis: visually distinct ── */}
       {metadata.type === 'waiting_approval' && metadata.options && (
         <div
-          className="mt-3 rounded-xl p-3"
+          className="rounded-2xl p-4"
           style={{
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            backgroundColor: 'rgba(245, 158, 11, 0.05)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            backgroundColor: 'rgba(245, 158, 11, 0.04)',
           }}
         >
-          <p className="text-sm font-medium mb-3 text-[--color-fg]">Choose an option to continue:</p>
+          <p className="text-sm font-medium mb-3" style={{ color: 'var(--color-fg)' }}>
+            Choose an option to continue:
+          </p>
           <div className="space-y-2">
             {metadata.options.map((option, i) => (
-              /* ux-fitts-target-size — min 44px height via p-3; physics-active-state via global CSS */
+              // ux-fitts-target-size — min 44px via p-3; physics-active-state via global CSS
               <button
                 key={i}
                 onClick={() => handleApprove(i)}
                 disabled={approving}
-                className="w-full text-left p-3 rounded-xl bg-[--color-surface] disabled:opacity-50 transition-all duration-150 ease-out"
+                className="w-full text-left p-3 rounded-xl transition-all duration-150 ease-out disabled:opacity-50"
                 style={{
+                  backgroundColor: 'var(--color-surface)',
                   boxShadow: '0 0 0 1px var(--color-border)',
                 }}
-                onMouseEnter={(e) => {
+                onMouseEnter={e => {
                   (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 1.5px var(--color-fg)';
                 }}
-                onMouseLeave={(e) => {
+                onMouseLeave={e => {
                   (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 1px var(--color-border)';
                 }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm text-[--color-fg]">
-                    {option.recommended && <span className="text-warning-500 mr-1">★</span>}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-sm" style={{ color: 'var(--color-fg)' }}>
+                    {option.recommended && (
+                      <span style={{ color: '#f59e0b' }} className="mr-1">★</span>
+                    )}
                     {option.label}
                   </span>
-                  {/* type-tabular-nums-for-data — pricing columns */}
+                  {/* type-tabular-nums-for-data — pricing alignment */}
                   {option.price && (
-                    <span className="text-sm text-[--color-muted] tabular-nums">{option.price}</span>
+                    <span className="text-sm tabular-nums shrink-0" style={{ color: 'var(--color-muted)' }}>
+                      {option.price}
+                    </span>
                   )}
                 </div>
                 {option.details && (
-                  <p className="text-xs text-[--color-muted] mt-1">{option.details}</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+                    {option.details}
+                  </p>
                 )}
               </button>
             ))}

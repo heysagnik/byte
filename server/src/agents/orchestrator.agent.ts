@@ -19,7 +19,7 @@ export class OrchestratorAgent extends BaseAgent {
 
   async run(userMessage: string): Promise<string> {
     const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-pro',
+      model: env.GEMINI_MODEL,
       tools: ORCHESTRATOR_TOOLS,
       systemInstruction: ORCHESTRATOR_SYSTEM_PROMPT,
     });

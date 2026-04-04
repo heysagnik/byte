@@ -4,6 +4,7 @@ import AuthPage from './pages/AuthPage';
 import HomePage from './pages/HomePage';
 import ThreadPage from './pages/ThreadPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import AppShell from './components/AppShell';
 
 export default function App() {
   const { isLoggedIn } = useAuthStore();
@@ -18,7 +19,9 @@ export default function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <HomePage />
+            <AppShell>
+              <HomePage />
+            </AppShell>
           </ProtectedRoute>
         }
       />
@@ -26,7 +29,9 @@ export default function App() {
         path="/thread/:id"
         element={
           <ProtectedRoute>
-            <ThreadPage />
+            <AppShell>
+              <ThreadPage />
+            </AppShell>
           </ProtectedRoute>
         }
       />
