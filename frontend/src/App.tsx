@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
+import { useThemeStore } from './store/themeStore';
 import AuthPage from './pages/AuthPage';
 import HomePage from './pages/HomePage';
 import ThreadPage from './pages/ThreadPage';
@@ -8,6 +10,15 @@ import AppShell from './components/AppShell';
 
 export default function App() {
   const { isLoggedIn } = useAuthStore();
+  const { theme } = useThemeStore();
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   return (
     <Routes>

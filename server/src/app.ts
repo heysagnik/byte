@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.routes';
 import threadRoutes from './routes/threads.routes';
+import userRoutes from './routes/user.routes';
 import { errorMiddleware } from './middleware/error.middleware';
 
 export function createApp() {
@@ -19,6 +20,7 @@ export function createApp() {
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/user', userRoutes);
   app.use('/api/threads', threadRoutes);
 
   app.use(errorMiddleware);

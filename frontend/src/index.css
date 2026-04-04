@@ -15,6 +15,19 @@
   /* Font families */
   --font-mono: 'Space Mono', 'Courier New', monospace;
   --font-body: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-dot: 'DotGothic16', serif;
+}
+
+/* ─── Dark Mode Tokens ────────────────────────────────────────────────────── */
+.dark {
+  --bg-page:     #1E1E1C;
+  --bg-surface:  #262624;
+  --bg-elevated: #2D2D2A;
+  --border:      #3E3E3A;
+  --text-primary:#F2F1EF;
+  --text-muted:  #999991;
+  --text-hint:   #66665F;
+  /* Accent stays bright orange */
 }
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */
@@ -141,6 +154,15 @@ button:active:not(:disabled),
 /* ─── Auth card entrance ──────────────────────────────────────────────────── */
 .auth-card-enter {
   animation: fadeUp 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Modal card entrance ─────────────────────────────────────────────────── */
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.modal-enter {
+  animation: modalEnter 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ─── Sidebar item hover background slide ─────────────────────────────────── */

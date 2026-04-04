@@ -62,13 +62,17 @@ registry.register('request_user_approval', {
 
 // ── System prompt builder ─────────────────────────────────────────────────────
 
-function buildSystemPrompt(callerName: string): string {
+function buildSystemPrompt(user: { name: string; pronouns?: string; location?: string }): string {
+  const callerName = user.name;
   return `You are Byte — the personal AI agent of ${callerName}. You act as a direct extension of ${callerName}, executing real-world tasks with precision. You are not a chatbot; you take action.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 WHO YOU ARE WORKING FOR
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Your owner: ${callerName}
+${user.pronouns ? `Owner's Pronouns: ${user.pronouns}` : ''}
+${user.location ? `Owner's Current Location: ${user.location} (Use this context when the owner searches for nearby places, weather, or local services).` : ''}
+
 When making phone calls, you speak AS ${callerName} — first person, naturally, as if it were them calling directly.
 When writing messages or summaries, you report back to ${callerName} in first person ("I called...", "I found...", "I booked...").
 
@@ -165,15 +169,21 @@ export class PersonalAgent {
   ) {}
 
   /**
-   * Returns the user's name if stored, null if unknown.
+   * Returns the user's context (name, pronouns, location).
    * If userMessage looks like a name response, saves it to the User record.
    */
-  private async resolveCallerName(userMessage: string): Promise<string | null> {
-    if (!this.userId) return process.env['CALLER_NAME'] ?? null;
+  private async resolveUserContext(userMessage: string): Promise<{ name: string | null; pronouns?: string; location?: string }> {
+    if (!this.userId) return { name: process.env['CALLER_NAME'] ?? null };
     try {
       const { User } = await import('../models/User.js');
       const user = await User.findById(this.userId);
-      if (user?.name) return user.name;
+      if (user?.name) {
+        return { 
+          name: user.name, 
+          pronouns: user.pronouns, 
+          location: user.autoLocation ? user.location : undefined 
+        };
+      }
 
       // Detect if the message IS the user's name (response to our question)
       const nameMatch =
@@ -183,10 +193,10 @@ export class PersonalAgent {
       if (nameMatch) {
         const name = nameMatch[1].trim();
         await User.findByIdAndUpdate(this.userId, { name });
-        return name;
+        return { name };
       }
     } catch { /* non-fatal */ }
-    return null;
+    return { name: null };
   }
 
   private async reportStep(step: AgentStep): Promise<void> {
@@ -209,10 +219,10 @@ export class PersonalAgent {
   }
 
   async run(userMessage: string): Promise<string> {
-    const callerName = await this.resolveCallerName(userMessage);
+    const userCtx = await this.resolveUserContext(userMessage);
 
     // If we don't know the user's name yet, ask and stop — don't proceed with any task.
-    if (!callerName) {
+    if (!userCtx.name) {
       const text = "Hi! Before we get started, what's your name? I'll use it when making calls or taking actions on your behalf.";
       await db.insertMessage(this.threadId, 'agent', text, { type: 'final' });
       if (this.agentMessageId) {
@@ -222,7 +232,7 @@ export class PersonalAgent {
     }
 
     try {
-      return await this._execute(userMessage, callerName);
+      return await this._execute(userMessage, userCtx as { name: string; pronouns?: string; location?: string });
     } catch (err) {
       // Preserve whatever steps we collected before the failure — don't wipe them
       if (this.agentMessageId) {
@@ -236,9 +246,9 @@ export class PersonalAgent {
     }
   }
 
-  private async _execute(userMessage: string, callerName: string): Promise<string> {
+  private async _execute(userMessage: string, userCtx: { name: string; pronouns?: string; location?: string }): Promise<string> {
     const tools = registry.allTools();
-    const systemInstruction = buildSystemPrompt(callerName);
+    const systemInstruction = buildSystemPrompt(userCtx);
 
     const getModel = (modelName: string) =>
       this.genAI.getGenerativeModel({ model: modelName, tools, systemInstruction });

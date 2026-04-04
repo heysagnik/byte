@@ -4,6 +4,7 @@ import { Avatar } from '@heroui/react';
 import { Plus, Search, LogOut, Trash2, Settings } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThreadList } from '../hooks/useThreadList';
+import SettingsModal from './SettingsModal';
 import { api } from '../lib/api';
 
 export default function Sidebar() {
@@ -13,6 +14,7 @@ export default function Sidebar() {
   const { threads, refresh } = useThreadList();
   const [search, setSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleDelete = async (e: React.MouseEvent, threadId: string) => {
     e.stopPropagation();
@@ -64,6 +66,7 @@ export default function Sidebar() {
           })}
         </div>
         <button
+          onClick={() => setIsSettingsOpen(true)}
           aria-label="Settings"
           className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
           style={{ color: 'var(--text-hint)' }}
@@ -213,18 +216,10 @@ export default function Sidebar() {
           >
             {username}
           </span>
-          <button
-            onClick={() => { logout(); navigate('/auth'); }}
-            aria-label="Sign out"
-            className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
-            style={{ color: 'var(--text-hint)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-hint)')}
-          >
-            <LogOut size={13} strokeWidth={1.5} />
-          </button>
         </div>
       </div>
+
+      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
     </aside>
   );
 }

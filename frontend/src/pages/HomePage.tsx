@@ -46,8 +46,8 @@ export default function HomePage() {
         {/* ── Greeting label — entrance: delay 0ms ────────────────── */}
         <div className="flex items-center gap-2.5 animate-fade-up" style={{ animationDelay: '0ms' }}>
           <span
-            className="text-[11px] tracking-[0.16em] uppercase"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}
+            className="text-[14px] tracking-[0.16em] uppercase"
+            style={{ fontFamily: 'var(--font-dot)', color: 'var(--text-muted)' }}
           >
             {getGreeting()}
           </span>
@@ -71,7 +71,7 @@ export default function HomePage() {
           onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.008)')}
           onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          What do you need handled today?
+          What do <span style={{ fontFamily: 'var(--font-dot)', position: 'relative', top: '1px' }}>you</span> need handled today?
         </h1>
 
         {/* ── Chat input — entrance: delay 120ms ──────────────────── */}
