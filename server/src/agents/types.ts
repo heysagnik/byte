@@ -1,5 +1,5 @@
-export interface AgentStep {
-  type: 'thinking' | 'searching' | 'calling' | 'result' | 'waiting_approval' | 'error';
-  content: string;
-  timestamp: number;
-}
+/**
+ * @deprecated Import from './context' directly.
+ * This file exists for backward compatibility only.
+ */
+export type { AgentStep, AgentContext, SubAgentResult } from './context';

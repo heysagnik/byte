@@ -8,6 +8,7 @@ import {
   getMessages,
   deleteThread,
   streamThread,
+  cancelRun,
 } from '../controllers/threads.controller';
 
 const router = Router();
@@ -23,6 +24,7 @@ router.get('/', getThreads);
 router.get('/:id/messages', getMessages);
 router.post('/:id/messages', sendMessage);
 router.post('/:id/approve', approveOption);
+router.post('/:id/cancel', cancelRun);
 router.delete('/:id', deleteThread);
 
 export default router;

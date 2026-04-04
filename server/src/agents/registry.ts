@@ -1,5 +1,5 @@
 import type { Tool } from '@google/generative-ai';
-import type { AgentStep } from './types';
+import type { AgentStep } from './context';
 
 export interface ToolContext {
   threadId: string;

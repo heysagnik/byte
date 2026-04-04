@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
 import { User, IUser } from '../models/User';
 import { Thread, IThread } from '../models/Thread';
-import { Message, IMessage, MessageRole } from '../models/Message';
+import { Message, IMessage, IMessageImage, MessageRole } from '../models/Message';
 import { broadcastToThread } from './sse.service';
 
 // ─── User ────────────────────────────────────────────────────────────────────
@@ -34,13 +34,15 @@ export async function insertMessage(
   threadId: string,
   role: MessageRole,
   content: string,
-  metadata: Record<string, unknown> = {}
+  metadata: Record<string, unknown> = {},
+  images?: IMessageImage[]
 ): Promise<IMessage> {
   const msg = await Message.create({
     threadId: new Types.ObjectId(threadId),
     role,
     content,
     metadata,
+    ...(images && images.length > 0 ? { images } : {}),
   });
 
   broadcastToThread(threadId, 'message:new', serializeMessage(msg));
@@ -101,6 +103,7 @@ export function serializeMessage(msg: IMessage) {
     threadId: msg.threadId.toString(),
     role: msg.role,
     content: msg.content,
+    images: msg.images,
     metadata: msg.metadata,
     createdAt: msg.createdAt,
   };

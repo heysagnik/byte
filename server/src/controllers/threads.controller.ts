@@ -6,6 +6,7 @@ import * as db from '../services/db.service';
 import { resolveApproval, hasPendingApproval } from '../services/approval.service';
 import { addSSEClient } from '../services/sse.service';
 import { PersonalAgent } from '../agents/personal.agent';
+import { cancelThread, isThreadRunning } from '../agents/orchestrator';
 import { Groq } from 'groq-sdk';
 import { env } from '../config/env';
 
@@ -16,8 +17,15 @@ const CreateThreadSchema = z.object({
   initialMessage: z.string().optional(),
 });
 
+const ImageSchema = z.object({
+  dataUrl: z.string().min(1),
+  mimeType: z.string().min(1),
+  name: z.string().min(1),
+});
+
 const SendMessageSchema = z.object({
-  content: z.string().min(1).max(10000),
+  content: z.string().max(10000).default(''),
+  images: z.array(ImageSchema).max(4).optional(),
 });
 
 const ApproveSchema = z.object({
@@ -99,11 +107,11 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
     return;
   }
 
-  const { content } = parse.data;
+  const { content, images } = parse.data;
 
   try {
     // Insert user message
-    await db.insertMessage(threadId, 'user', content, {});
+    await db.insertMessage(threadId, 'user', content, {}, images);
 
     // Insert placeholder agent message
     const agentMsg = await db.insertMessage(threadId, 'agent', '', {
@@ -113,12 +121,16 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
     const agentMessageId = agentMsg._id.toString();
 
     const userId = req.user!.userId;
+    const clientIp =
+      (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
+      req.socket.remoteAddress ??
+      undefined;
 
     // Fire personal agent in background
     void (async () => {
-      const agent = new PersonalAgent(threadId, agentMessageId, userId);
+      const agent = new PersonalAgent(threadId, agentMessageId, userId, clientIp);
       try {
-        await agent.run(content);
+        await agent.run(content, images);
       } catch (err) {
         console.error(`[agent] Error in thread ${threadId}:`, err);
         const errMsg = err instanceof Error ? err.message : 'Agent encountered an error';
@@ -233,4 +245,18 @@ export async function streamThread(req: AuthRequest, res: Response): Promise<voi
     clearInterval(ping);
     cleanup();
   });
+}
+
+export async function cancelRun(req: AuthRequest, res: Response): Promise<void> {
+  const threadId = req.params['id'] as string;
+  if (!isValidObjectId(threadId)) {
+    res.status(400).json({ error: 'Invalid thread ID' });
+    return;
+  }
+  if (!isThreadRunning(threadId)) {
+    res.status(404).json({ error: 'No active run for this thread' });
+    return;
+  }
+  cancelThread(threadId);
+  res.json({ status: 'cancelled' });
 }

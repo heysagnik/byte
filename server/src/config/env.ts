@@ -18,8 +18,6 @@ const EnvSchema = z.object({
   ELEVENLABS_AGENT_ID: z.string().min(1, 'ELEVENLABS_AGENT_ID is required'),
   ELEVENLABS_PHONE_NUMBER_ID: z.string().min(1, 'ELEVENLABS_PHONE_NUMBER_ID is required'),
 
-  SEARCH_API_KEY: z.string().min(1, 'SEARCH_API_KEY is required'),
-
   GROQ_API_KEY: z.string().optional(),
 
   SERVER_BASE_URL: z.string().default('http://localhost:3001'),
