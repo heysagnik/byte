@@ -1,24 +1,13 @@
 @import "tailwindcss";
 @import "@heroui/react/styles";
 
-/* ─── Design tokens ──────────────────────────────────────────────────────── */
-@theme {
-  --color-bg:     #f5f4ef;
-  --color-fg:     #1a1a1a;
-  --color-muted:  #888880;
-  --color-border: rgba(0, 0, 0, 0.10);  /* visual-border-alpha-colors */
-  --color-surface: #ffffff;
-
-  /* Consistent spacing scale — visual-consistent-spacing-scale */
-  --spacing-page-x: 1.5rem;   /* 24px */
-  --spacing-page-y: 1rem;     /* 16px */
-}
-
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;
-  background-color: var(--color-bg);
-  color: var(--color-fg);
+  /* staging-dim-background — use HeroUI --background token (off-white) so
+     white Surface cards appear elevated above the page */
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* type-antialiased-on-retina */
@@ -34,10 +23,9 @@ h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
 }
 
-/* native-placeholder-styling */
-::placeholder {
-  color: var(--color-muted);
-  opacity: 1;
+/* Disable browser grammar/translation color highlights on message text */
+[translate="no"] {
+  -webkit-text-fill-color: inherit;
 }
 
 /* physics-active-state — interactive elements scale on press */

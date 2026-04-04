@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Input } from '@heroui/react';
+import { Button, Input, Surface } from '@heroui/react';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
@@ -33,27 +33,15 @@ export default function AuthForm() {
   };
 
   return (
-    /* visual-layered-shadows — multiple shadow layers for realistic depth */
-    /* visual-concentric-radius — outer radius 16px, inner elements 12px */
-    <div
-      className="w-full max-w-sm bg-[--color-surface] rounded-2xl px-8 py-8 flex flex-col gap-6"
-      style={{
-        boxShadow:
-          '0 0 0 1px var(--color-border), ' +
-          '0 2px 4px rgba(0,0,0,0.04), ' +
-          '0 8px 24px rgba(0,0,0,0.08)',
-      }}
-    >
-      {/* Header */}
+    <Surface className="w-full max-w-sm rounded-lg px-8 py-8 flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-[--color-fg]">byte</h1>
-        <p className="text-sm text-[--color-muted]">Your personal AI agent</p>
+        <h1 className="text-2xl font-semibold">byte</h1>
+        <p className="text-sm text-[--muted]">Your personal AI agent</p>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="auth-email" className="text-sm font-medium text-[--color-fg]">
+          <label htmlFor="auth-email" className="text-sm font-medium">
             Email
           </label>
           <Input
@@ -70,7 +58,7 @@ export default function AuthForm() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="auth-password" className="text-sm font-medium text-[--color-fg]">
+          <label htmlFor="auth-password" className="text-sm font-medium">
             Password
           </label>
           <Input
@@ -86,46 +74,31 @@ export default function AuthForm() {
           />
         </div>
 
-        {/* ux-von-restorff-emphasis — error is visually distinct */}
         {errorMsg && (
           <p className="text-sm text-danger-500">{errorMsg}</p>
         )}
 
-        {/* visual-button-shadow-anatomy + ux-fitts-target-size (min 44px height via size="lg") */}
         <Button
           type="submit"
           isPending={loading}
+          variant="primary"
           size="lg"
-          className="w-full font-medium transition-all duration-150 ease-out"
-          style={{
-            backgroundColor: 'var(--color-fg)',
-            color: 'var(--color-surface)',
-            /* visual-button-shadow-anatomy — 6-layer shadow */
-            boxShadow:
-              '0 0 0 1px rgba(0,0,0,0.15), ' +
-              '0 1px 0 rgba(255,255,255,0.06) inset, ' +
-              '0 -1px 0 rgba(0,0,0,0.2) inset, ' +
-              '0 2px 4px rgba(0,0,0,0.12), ' +
-              '0 4px 8px rgba(0,0,0,0.08), ' +
-              '0 8px 16px rgba(0,0,0,0.04)',
-          }}
+          fullWidth
         >
           {mode === 'login' ? 'Sign in' : 'Create account'}
         </Button>
       </form>
 
-      {/* Toggle mode */}
-      <p className="text-center text-sm text-[--color-muted]">
+      <p className="text-center text-sm text-[--muted]">
         {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-        {/* ux-fitts-target-size — wider tap target via padding */}
         <button
           type="button"
-          className="text-[--color-fg] hover:underline font-medium px-1 py-0.5 transition-colors duration-150 ease-out"
+          className="font-medium underline-offset-2 hover:underline px-1 py-0.5"
           onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
         >
           {mode === 'login' ? 'Sign up' : 'Sign in'}
         </button>
       </p>
-    </div>
+    </Surface>
   );
 }

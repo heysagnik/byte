@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Spinner } from '@heroui/react';
+import ChatHeader from '../components/ChatHeader';
 import ChatInput from '../components/ChatInput';
 import ThreadView from '../components/ThreadView';
 import { useThread } from '../hooks/useThread';
 import { api } from '../lib/api';
+
+// Single source of truth for the content column width — shared by
+// ThreadView (messages) and the input bar so they always align.
+export const CONTENT_WIDTH = 'max-w-2xl';
 
 export default function ThreadPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,25 +28,35 @@ export default function ThreadPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--color-bg)' }}>
-      {/* ux-doherty-perceived-speed — spinner in corner while loading */}
-      {!isReady && (
-        <div className="absolute top-3 right-4 z-40">
-          <Spinner size="sm" />
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <ChatHeader threadId={id ?? ''} />
+
+      {!isReady ? (
+        /* ux-doherty-perceived-speed — skeleton rows while messages load */
+        <div className={`flex-1 overflow-y-auto`}>
+          <div className={`${CONTENT_WIDTH} mx-auto px-6 py-6 w-full space-y-6`}>
+            {[80, 55, 70].map((w, i) => (
+              <div key={i} className="flex flex-col gap-3">
+                <div className="flex justify-end">
+                  <div className="h-9 rounded-lg animate-pulse bg-[var(--surface-secondary)]" style={{ width: `${w}%` }} />
+                </div>
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full shrink-0 animate-pulse bg-[var(--surface-secondary)]" />
+                  <div className="flex-1 space-y-2 pt-1">
+                    <div className="h-3 rounded animate-pulse bg-[var(--surface-secondary)]" style={{ width: '90%' }} />
+                    <div className="h-3 rounded animate-pulse bg-[var(--surface-secondary)]" style={{ width: '65%' }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+      ) : (
+        <ThreadView messages={messages} threadId={id ?? ''} />
       )}
 
-      <ThreadView messages={messages} threadId={id ?? ''} />
-
-      {/* Input bar — no border-top, floats like Claude's */}
-      <div className="shrink-0 px-6 pb-5 pt-2">
-        <div className="max-w-3xl mx-auto">
-          <ChatInput
-            onSend={handleSend}
-            disabled={sending}
-            placeholder="Reply…"
-          />
-        </div>
+      <div className={`shrink-0 px-6 pb-5 pt-2 ${CONTENT_WIDTH} mx-auto w-full`}>
+        <ChatInput onSend={handleSend} disabled={sending} placeholder="Reply…" />
       </div>
     </div>
   );
