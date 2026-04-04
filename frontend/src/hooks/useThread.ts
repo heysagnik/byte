@@ -8,11 +8,18 @@ export interface AgentStep {
   timestamp: number;
 }
 
+export interface MessageImage {
+  dataUrl: string;
+  mimeType: string;
+  name: string;
+}
+
 export interface Message {
   id: string;
   threadId: string;
   role: 'user' | 'agent' | 'system';
   content: string;
+  images?: MessageImage[];
   metadata: Record<string, unknown>;
   createdAt: string;
 }

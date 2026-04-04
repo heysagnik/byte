@@ -1,8 +1,16 @@
 import { useRef, useEffect, useState } from 'react';
-import { ArrowUp, Plus, Loader2 } from 'lucide-react';
+import { ArrowUp, Plus, X } from 'lucide-react';
+
+export interface ImageAttachment {
+  dataUrl: string;   // base64 data URL — for display + sending
+  mimeType: string;  // e.g. 'image/jpeg'
+  name: string;
+}
 
 interface ChatInputProps {
-  onSend: (message: string) => void;
+  onSend: (message: string, images?: ImageAttachment[]) => void;
+  onCancel?: () => void;
+  isRunning?: boolean;
   disabled?: boolean;
   placeholder?: string;
   /** When set, pre-fills the textarea (suggestion chips) */
@@ -10,16 +18,32 @@ interface ChatInputProps {
   onExternalValueConsumed?: () => void;
 }
 
+const MAX_IMAGES = 4;
+const MAX_SIZE_MB = 5;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ChatInput({
   onSend,
+  onCancel,
+  isRunning,
   disabled,
   placeholder,
   externalValue,
   onExternalValueConsumed,
 }: ChatInputProps) {
   const [value, setValue] = useState('');
+  const [images, setImages] = useState<ImageAttachment[]>([]);
   const [popping, setPopping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Consume externally set value from suggestion chips
   useEffect(() => {
@@ -39,13 +63,50 @@ export default function ChatInput({
 
   const handleSend = () => {
     const trimmed = value.trim();
-    if (!trimmed || disabled) return;
-    // Trigger pop animation
+    if ((!trimmed && images.length === 0) || disabled) return;
     setPopping(true);
     setTimeout(() => setPopping(false), 300);
-    onSend(trimmed);
+    onSend(trimmed, images.length > 0 ? images : undefined);
     setValue('');
+    setImages([]);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0) return;
+
+    const remaining = MAX_IMAGES - images.length;
+    const toProcess = files.slice(0, remaining);
+
+    const loaded: ImageAttachment[] = [];
+    for (const file of toProcess) {
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) continue; // skip oversized silently
+      const dataUrl = await readFileAsDataUrl(file);
+      loaded.push({ dataUrl, mimeType: file.type, name: file.name });
+    }
+    setImages(prev => [...prev, ...loaded]);
+  };
+
+  const removeImage = (i: number) => {
+    setImages(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  // Paste images from clipboard
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData.items).filter(item => item.type.startsWith('image/'));
+    if (items.length === 0) return;
+    e.preventDefault();
+    const remaining = MAX_IMAGES - images.length;
+    const loaded: ImageAttachment[] = [];
+    for (const item of items.slice(0, remaining)) {
+      const file = item.getAsFile();
+      if (!file) continue;
+      const dataUrl = await readFileAsDataUrl(file);
+      loaded.push({ dataUrl, mimeType: file.type, name: `pasted-image.${file.type.split('/')[1]}` });
+    }
+    setImages(prev => [...prev, ...loaded]);
   };
 
   useEffect(() => {
@@ -55,7 +116,7 @@ export default function ChatInput({
     ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
   }, [value]);
 
-  const canSend = !!value.trim() && !disabled;
+  const canSend = (!!value.trim() || images.length > 0) && !disabled;
 
   return (
     <div
@@ -66,11 +127,37 @@ export default function ChatInput({
         boxShadow: '0 2px 12px rgba(17,17,16,0.06)',
       }}
     >
+      {/* Image previews */}
+      {images.length > 0 && (
+        <div className="flex gap-2 mb-2.5 flex-wrap">
+          {images.map((img, i) => (
+            <div key={i} className="relative group shrink-0">
+              <img
+                src={img.dataUrl}
+                alt={img.name}
+                className="w-16 h-16 rounded-xl object-cover"
+                style={{ border: '1px solid var(--border)' }}
+              />
+              <button
+                type="button"
+                onClick={() => removeImage(i)}
+                aria-label="Remove image"
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ background: 'var(--text-primary)', color: 'var(--bg-elevated)' }}
+              >
+                <X size={9} strokeWidth={2.5} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <textarea
         ref={textareaRef}
         value={value}
         onChange={e => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
         placeholder={placeholder ?? 'Message'}
         rows={1}
         disabled={disabled}
@@ -83,15 +170,28 @@ export default function ChatInput({
         }}
       />
 
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <div className="flex items-center justify-between">
         {/* Left actions */}
         <div className="flex items-center gap-1">
           <button
             type="button"
-            aria-label="Add attachment"
-            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150"
+            aria-label="Add image"
+            disabled={images.length >= MAX_IMAGES || disabled}
+            onClick={() => fileInputRef.current?.click()}
+            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ color: 'var(--text-hint)' }}
             onMouseEnter={e => {
+              if (images.length >= MAX_IMAGES || disabled) return;
               e.currentTarget.style.color = 'var(--text-muted)';
               e.currentTarget.style.transform = 'rotate(45deg)';
             }}
@@ -124,36 +224,58 @@ export default function ChatInput({
           </button>
         </div>
 
-        {/* Send button — pop animation on click, accent hover */}
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={!canSend}
-          aria-label="Send message"
-          className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-all duration-150 ${popping ? 'animate-pop' : ''}`}
-          style={{
-            background: canSend ? 'var(--text-primary)' : 'var(--border)',
-            color: canSend ? 'var(--bg-elevated)' : 'var(--text-hint)',
-            cursor: canSend ? 'pointer' : 'not-allowed',
-          }}
-          onMouseEnter={e => {
-            if (canSend) {
+        {/* Cancel button — shown while pipeline is running */}
+        {isRunning ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Stop"
+            className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-all duration-150"
+            style={{ background: 'var(--text-primary)', color: 'var(--bg-elevated)' }}
+            onMouseEnter={e => {
               (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)';
               (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)';
-            }
-          }}
-          onMouseLeave={e => {
-            if (canSend) {
+            }}
+            onMouseLeave={e => {
               (e.currentTarget as HTMLButtonElement).style.background = 'var(--text-primary)';
               (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
-            }
-          }}
-        >
-          {disabled
-            ? <Loader2 size={14} className="animate-spin" strokeWidth={2.5} />
-            : <ArrowUp size={14} strokeWidth={2.5} />
-          }
-        </button>
+            }}
+          >
+            {/* Pause icon — two vertical bars */}
+            <svg width="11" height="13" viewBox="0 0 11 13" fill="currentColor">
+              <rect x="0" y="0" width="3.5" height="13" rx="1.5" />
+              <rect x="7.5" y="0" width="3.5" height="13" rx="1.5" />
+            </svg>
+          </button>
+        ) : (
+          /* Send button */
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!canSend}
+            aria-label="Send message"
+            className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-all duration-150 ${popping ? 'animate-pop' : ''}`}
+            style={{
+              background: canSend ? 'var(--text-primary)' : 'var(--border)',
+              color: canSend ? 'var(--bg-elevated)' : 'var(--text-hint)',
+              cursor: canSend ? 'pointer' : 'not-allowed',
+            }}
+            onMouseEnter={e => {
+              if (canSend) {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)';
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)';
+              }
+            }}
+            onMouseLeave={e => {
+              if (canSend) {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--text-primary)';
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+              }
+            }}
+          >
+            <ArrowUp size={14} strokeWidth={2.5} />
+          </button>
+        )}
       </div>
     </div>
   );

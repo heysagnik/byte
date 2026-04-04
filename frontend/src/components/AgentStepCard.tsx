@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Button, Chip, Accordion } from '@heroui/react';
+import { useState, useEffect, useRef } from 'react';
+import { Chip, Accordion } from '@heroui/react';
 import type { Selection } from '@heroui/react';
 import { api } from '../lib/api';
 
 interface AgentStep {
-  type: 'thinking' | 'searching' | 'calling' | 'result' | 'waiting_approval' | 'error';
+  type: 'thinking' | 'searching' | 'calling' | 'result' | 'waiting_approval' | 'error' | 'agent_spawn' | 'agent_done';
   content: string;
   timestamp: number;
+  agentLabel?: string;
 }
 
 interface ApprovalOption {
@@ -32,15 +33,6 @@ type TimelineItem =
   | { kind: 'step'; data: AgentStep; time: number }
   | { kind: 'notification'; data: NotificationMessage; time: number };
 
-const stepColor: Record<string, 'default' | 'accent' | 'success' | 'warning' | 'danger'> = {
-  thinking: 'default',
-  searching: 'accent',
-  calling: 'accent',
-  result: 'success',
-  waiting_approval: 'warning',
-  error: 'danger',
-};
-
 const stepLabel: Record<string, string> = {
   thinking: 'Thinking',
   searching: 'Searching',
@@ -48,6 +40,8 @@ const stepLabel: Record<string, string> = {
   result: 'Done',
   waiting_approval: 'Waiting',
   error: 'Error',
+  agent_spawn: 'Agent',
+  agent_done: 'Agent',
 };
 
 // What to show in the accordion trigger while the step is live
@@ -58,6 +52,8 @@ const liveLabel: Record<string, string> = {
   result: 'Processing results…',
   waiting_approval: 'Waiting for Approval…',
   error: 'Error',
+  agent_spawn: 'Spawning agents…',
+  agent_done: 'Agent completed',
 };
 
 const notifColor: Record<string, 'default' | 'success' | 'warning' | 'danger'> = {
@@ -84,7 +80,6 @@ interface AgentStepCardProps {
 }
 
 export default function AgentStepCard({ metadata, threadId, isRunning, notifications = [] }: AgentStepCardProps) {
-  const [approving, setApproving] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Selection>(new Set(['steps']));
 
   const isDone = isRunning === undefined
@@ -102,17 +97,6 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
   ].sort((a, b) => a.time - b.time);
 
   if (timeline.length === 0 && metadata.type !== 'waiting_approval') return null;
-
-  const handleApprove = async (optionIndex: number) => {
-    setApproving(true);
-    try {
-      await api.post(`/threads/${threadId}/approve`, { optionIndex });
-    } catch (err) {
-      console.error('Approval failed:', err);
-    } finally {
-      setApproving(false);
-    }
-  };
 
   // Header: when running, reflect the last active step type so the user always knows what's happening
   const lastItem = timeline[timeline.length - 1];
@@ -151,7 +135,7 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
               {timeline.length > 0 && (
                 <div
                   className="mt-1 ml-2 pl-3.5 grid gap-y-2.5 gap-x-3 items-start"
-                  style={{ gridTemplateColumns: 'min-content 1fr', borderLeft: '1px solid var(--border)' }}
+                  style={{ gridTemplateColumns: 'max-content 1fr', borderLeft: '1px solid var(--border)' }}
                 >
                   {timeline.map((item, i) => {
                     const isLast = !isDone && i === timeline.length - 1;
@@ -159,7 +143,11 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                     if (item.kind === 'step') {
                       const step = item.data;
                       const prev = timeline[i - 1];
-                      const showChip = i === 0 || prev?.kind !== 'step' || prev.data.type !== step.type;
+                      const showChip = i === 0 || prev?.kind !== 'step' || prev.data.type !== step.type || prev.data.agentLabel !== step.agentLabel;
+                      const chipLabel = step.agentLabel
+                        ? step.agentLabel
+                        : (stepLabel[step.type] ?? step.type);
+                      const isAgentStep = step.type === 'agent_spawn' || step.type === 'agent_done';
                       return (
                         <div key={i} className="contents">
                           <div className="pt-[1px] animate-step-in">
@@ -167,10 +155,14 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                               <Chip
                                 size="sm"
                                 variant="soft"
-                                className={`h-[20px] px-1 text-[11px] font-medium transition-opacity ${isLast ? 'opacity-100' : 'opacity-50'}`}
-                                style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+                                className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap ${isLast ? 'opacity-100' : 'opacity-50'}`}
+                                style={{
+                                  background: isAgentStep ? 'var(--accent)' : 'var(--bg-surface)',
+                                  color: isAgentStep ? '#fff' : 'var(--text-muted)',
+                                  fontFamily: 'var(--font-mono)',
+                                }}
                               >
-                                {stepLabel[step.type] ?? step.type}
+                                {chipLabel}
                               </Chip>
                             )}
                           </div>
@@ -197,7 +189,7 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                           <Chip
                             size="sm"
                             variant="soft"
-                            className={`h-[20px] px-1 text-[11px] font-medium transition-opacity ${isLast ? 'opacity-100' : 'opacity-50'}`}
+                            className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap ${isLast ? 'opacity-100' : 'opacity-50'}`}
                             style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
                           >
                             {label}
@@ -218,48 +210,196 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                 </div>
               )}
 
-              {metadata.type === 'waiting_approval' && metadata.options && (
-                <div
-                  className="rounded-xl p-4 space-y-3 mt-3"
-                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
-                >
-                  <p
-                    className="text-[11px] uppercase tracking-widest"
-                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.1em' }}
-                  >
-                    Choose an option
-                  </p>
-                  <div className="space-y-2">
-                    {metadata.options.map((option, i) => (
-                      <Button
-                        key={i}
-                        variant="outline"
-                        fullWidth
-                        isDisabled={approving}
-                        onPress={() => handleApprove(i)}
-                        className="justify-between h-auto py-2.5 px-3 rounded-lg transition-colors"
-                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
-                      >
-                        <span
-                          className="font-medium text-[13px] flex items-center gap-2"
-                          style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
-                        >
-                          {option.recommended && <span style={{ color: 'var(--accent)' }}>★</span>}
-                          {option.label}
-                        </span>
-                        <span className="flex flex-col items-end gap-0.5 text-right">
-                          {option.price && <span className="text-[13px] font-medium tabular-nums" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>{option.price}</span>}
-                          {option.details && <span className="text-[11px] font-normal leading-tight" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>{option.details}</span>}
-                        </span>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </Accordion.Body>
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>
+
+      {metadata.type === 'waiting_approval' && metadata.options && (
+        <ApprovalCard
+          options={metadata.options}
+          summary={(metadata as { summary?: string }).summary}
+          threadId={threadId}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── ApprovalCard ─────────────────────────────────────────────────────────────
+
+interface ApprovalCardProps {
+  options: ApprovalOption[];
+  summary?: string;
+  threadId: string;
+}
+
+function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const submitRef = useRef(false);
+
+  const handleSelect = async (i: number) => {
+    if (submitRef.current) return;
+    submitRef.current = true;
+    setSelected(i);
+
+    try {
+      await api.post(`/threads/${threadId}/approve`, { optionIndex: i });
+    } catch (err) {
+      console.error('Approval failed:', err);
+      submitRef.current = false;
+      setSelected(null);
+      return;
+    }
+
+    // Brief confirmation flash, then fade out
+    setConfirmed(true);
+    setTimeout(() => setVisible(false), 900);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className="mt-3 rounded-2xl overflow-hidden transition-opacity duration-500"
+      style={{
+        opacity: confirmed ? 0 : 1,
+        border: '1px solid var(--border)',
+        background: 'var(--bg-elevated)',
+      }}
+    >
+      {/* Header */}
+      <div
+        className="px-4 pt-4 pb-3 flex items-center gap-2"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
+        <span
+          className="w-[5px] h-[5px] rounded-full shrink-0"
+          style={{ background: 'var(--accent)' }}
+        />
+        <span
+          className="text-[10px] uppercase tracking-widest"
+          style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+        >
+          {confirmed ? 'Confirmed' : 'Choose an option'}
+        </span>
+      </div>
+
+      {/* Summary */}
+      {summary && (
+        <p
+          className="px-4 pt-3 text-[13px] leading-[1.6]"
+          style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}
+        >
+          {summary}
+        </p>
+      )}
+
+      {/* Options */}
+      <div className="p-3 flex flex-col gap-2">
+        {options.map((option, i) => {
+          const isSelected = selected === i;
+          const isOther = selected !== null && !isSelected;
+
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={selected !== null}
+              onClick={() => handleSelect(i)}
+              className="w-full text-left rounded-xl px-4 py-3 transition-all duration-200 outline-none"
+              style={{
+                background: isSelected ? 'var(--text-primary)' : 'var(--bg-surface)',
+                border: `1.5px solid ${isSelected ? 'var(--text-primary)' : 'var(--border)'}`,
+                opacity: isOther ? 0.35 : 1,
+                cursor: selected !== null ? 'default' : 'pointer',
+                transform: isSelected ? 'scale(1)' : undefined,
+              }}
+              onMouseEnter={e => {
+                if (selected !== null) return;
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--text-primary)';
+                (e.currentTarget as HTMLElement).style.background = 'var(--bg-page)';
+              }}
+              onMouseLeave={e => {
+                if (selected !== null) return;
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
+                (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)';
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  {/* Selection indicator */}
+                  <span
+                    className="shrink-0 w-[16px] h-[16px] rounded-full flex items-center justify-center transition-all duration-200"
+                    style={{
+                      border: isSelected ? 'none' : '1.5px solid var(--border)',
+                      background: isSelected ? 'var(--bg-elevated)' : 'transparent',
+                    }}
+                  >
+                    {isSelected && (
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                        <path d="M1.5 4L3.5 6L6.5 2" stroke="var(--text-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {option.recommended && (
+                        <span
+                          className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded-full"
+                          style={{
+                            fontFamily: 'var(--font-mono)',
+                            background: isSelected ? 'rgba(255,255,255,0.15)' : 'var(--accent)',
+                            color: isSelected ? 'rgba(255,255,255,0.8)' : '#fff',
+                            letterSpacing: '0.1em',
+                          }}
+                        >
+                          Recommended
+                        </span>
+                      )}
+                      <span
+                        className="text-[13px] font-medium leading-snug"
+                        style={{
+                          color: isSelected ? 'var(--bg-elevated)' : 'var(--text-primary)',
+                          fontFamily: 'var(--font-body)',
+                        }}
+                      >
+                        {option.label}
+                      </span>
+                    </div>
+                    {option.details && (
+                      <p
+                        className="text-[12px] leading-[1.5] mt-0.5"
+                        style={{
+                          color: isSelected ? 'rgba(247,246,244,0.6)' : 'var(--text-muted)',
+                          fontFamily: 'var(--font-body)',
+                        }}
+                      >
+                        {option.details}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {option.price && (
+                  <span
+                    className="shrink-0 text-[13px] font-semibold tabular-nums"
+                    style={{
+                      color: isSelected ? 'var(--bg-elevated)' : 'var(--text-primary)',
+                      fontFamily: 'var(--font-body)',
+                    }}
+                  >
+                    {option.price}
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

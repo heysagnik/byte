@@ -40,15 +40,38 @@ export default function MessageBubble({ message, threadId, isThinking, notificat
   if (message.role === 'user') {
     return (
       <div className="flex justify-end py-1.5">
-        <div
-          className="max-w-[78%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed"
-          style={{
-            background: 'var(--text-primary)',   /* #111110 */
-            color: 'var(--bg-elevated)',          /* light text on dark bg */
-            fontFamily: 'var(--font-body)',
-          }}
-        >
-          <RenderText text={message.content} />
+        <div className="max-w-[78%] flex flex-col items-end gap-1.5">
+          {/* Image attachments */}
+          {message.images && message.images.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 justify-end">
+              {message.images.map((img, i) => (
+                <img
+                  key={i}
+                  src={img.dataUrl}
+                  alt={img.name}
+                  className="rounded-xl object-cover"
+                  style={{
+                    maxWidth: message.images!.length === 1 ? '240px' : '120px',
+                    maxHeight: '200px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          {/* Text bubble — only if there's text */}
+          {message.content && (
+            <div
+              className="rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed"
+              style={{
+                background: 'var(--text-primary)',
+                color: 'var(--bg-elevated)',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              <RenderText text={message.content} />
+            </div>
+          )}
         </div>
       </div>
     );

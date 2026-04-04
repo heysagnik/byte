@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ChatInput from '../components/ChatInput';
+import ChatInput, { type ImageAttachment } from '../components/ChatInput';
 import { api } from '../lib/api';
 import { useThreadList } from '../hooks/useThreadList';
 
@@ -19,7 +19,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { refresh } = useThreadList();
 
-  const handleSend = async (message: string) => {
+  const handleSend = async (message: string, images?: ImageAttachment[]) => {
     setSending(true);
     try {
       const threadRes = await api.post<{ id: string; title: string }>('/threads', {
@@ -27,7 +27,10 @@ export default function HomePage() {
         initialMessage: message,
       });
       const threadId = threadRes.data.id;
-      await api.post(`/threads/${threadId}/messages`, { content: message });
+      await api.post(`/threads/${threadId}/messages`, {
+        content: message,
+        images: images?.map(img => ({ dataUrl: img.dataUrl, mimeType: img.mimeType, name: img.name })),
+      });
       refresh();
       navigate(`/thread/${threadId}`);
     } catch (err) {
@@ -71,7 +74,7 @@ export default function HomePage() {
           onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.008)')}
           onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          What do <span style={{ fontFamily: 'var(--font-dot)', position: 'relative', top: '1px' }}>you</span> need handled today?
+          How may I help you today?
         </h1>
 
         {/* ── Chat input — entrance: delay 120ms ──────────────────── */}

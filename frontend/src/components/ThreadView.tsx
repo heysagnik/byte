@@ -17,6 +17,8 @@ interface Turn {
   notifications: Message[];
   // Final agent message(s) with actual content
   responses: Message[];
+  // Approval request message if present (type: waiting_approval)
+  approvalMessage: Message | null;
 }
 
 function buildTurns(messages: Message[]): Turn[] {
@@ -24,14 +26,18 @@ function buildTurns(messages: Message[]): Turn[] {
 
   for (const msg of messages) {
     if (msg.role === 'user') {
-      turns.push({ user: msg, placeholder: null, notifications: [], responses: [] });
+      turns.push({ user: msg, placeholder: null, notifications: [], responses: [], approvalMessage: null });
       continue;
     }
     if (turns.length === 0) continue;
     const turn = turns[turns.length - 1];
 
     if (msg.role === 'system') {
-      turn.notifications.push(msg);
+      if ((msg.metadata?.type as string) === 'waiting_approval') {
+        turn.approvalMessage = msg;
+      } else {
+        turn.notifications.push(msg);
+      }
     } else if (msg.role === 'agent' && !msg.content) {
       // Empty agent message = the progress placeholder (type: thinking | done)
       turn.placeholder = msg;
@@ -99,6 +105,14 @@ export default function ThreadView({ messages, threadId, onlyLatest }: ThreadVie
                     type: (m.metadata?.type as string) ?? 'info',
                     createdAt: m.createdAt,
                   }))}
+                />
+              )}
+
+              {/* Approval request — rendered as its own card with option buttons */}
+              {turn.approvalMessage && (
+                <MessageBubble
+                  message={turn.approvalMessage}
+                  threadId={threadId}
                 />
               )}
 

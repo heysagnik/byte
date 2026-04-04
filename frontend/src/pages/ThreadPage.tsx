@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import ChatHeader from '../components/ChatHeader';
-import ChatInput from '../components/ChatInput';
+import ChatInput, { type ImageAttachment } from '../components/ChatInput';
 import ThreadView from '../components/ThreadView';
 import { useThread } from '../hooks/useThread';
 import { api } from '../lib/api';
@@ -13,14 +13,31 @@ export default function ThreadPage() {
   const { id } = useParams<{ id: string }>();
   const { messages, isReady, addOptimisticMessages, removeOptimisticMessages } = useThread(id);
 
-  const handleSend = async (message: string) => {
+  // Agent is running if the last agent message is still in thinking state
+  const isRunning = messages.some(
+    m => m.role === 'agent' && (m.metadata?.type as string) === 'thinking'
+  );
+
+  const handleSend = async (message: string, images?: ImageAttachment[]) => {
     if (!id) return;
     addOptimisticMessages(message);
     try {
-      await api.post(`/threads/${id}/messages`, { content: message });
+      await api.post(`/threads/${id}/messages`, {
+        content: message,
+        images: images?.map(img => ({ dataUrl: img.dataUrl, mimeType: img.mimeType, name: img.name })),
+      });
     } catch (err) {
       console.error('Failed to send message:', err);
       removeOptimisticMessages();
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!id) return;
+    try {
+      await api.post(`/threads/${id}/cancel`, {});
+    } catch (err) {
+      console.error('Failed to cancel:', err);
     }
   };
 
@@ -52,7 +69,7 @@ export default function ThreadPage() {
       )}
 
       <div className={`shrink-0 px-6 pb-5 pt-2 ${CONTENT_WIDTH} mx-auto w-full`}>
-        <ChatInput onSend={handleSend} placeholder="Reply…" />
+        <ChatInput onSend={handleSend} onCancel={handleCancel} isRunning={isRunning} placeholder="Reply…" />
       </div>
     </div>
   );
