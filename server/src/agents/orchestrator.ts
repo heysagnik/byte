@@ -166,7 +166,7 @@ export class OrchestratorAgent {
     }
     const firstTurn: string | Part[] = firstTurnParts.length > 1 ? firstTurnParts : userMessage;
 
-    let response = await geminiLimiter.schedule(() => chat.sendMessage(firstTurn)).catch(err => {
+    let response = await geminiLimiter.schedule(() => chat.sendMessage(firstTurn), this.abortSignal).catch(err => {
       this.reportStep({ type: 'error', content: `AI unreachable: ${String(err)}`, timestamp: Date.now() });
       throw err;
     });
@@ -186,7 +186,7 @@ export class OrchestratorAgent {
       if (this.abortSignal.aborted) throw new Error('cancelled');
       await this.reportStep({ type: 'thinking', content: 'Synthesizing results...', timestamp: Date.now() });
 
-      response = await geminiLimiter.schedule(() => chat.sendMessage(results as Part[])).catch(err => {
+      response = await geminiLimiter.schedule(() => chat.sendMessage(results as Part[]), this.abortSignal).catch(err => {
         this.reportStep({ type: 'error', content: `AI error: ${String(err)}`, timestamp: Date.now() });
         throw err;
       });

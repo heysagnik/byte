@@ -23,6 +23,7 @@ interface QueueEntry<T> {
   fn: () => Promise<T>;
   resolve: (value: T) => void;
   reject: (err: unknown) => void;
+  signal?: AbortSignal;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,10 +45,13 @@ async function processQueue(): Promise<void> {
       await sleep(MIN_INTERVAL_MS - elapsed);
     }
 
+    // Double check if aborted while sleeping
+    if (entry.signal?.aborted) continue;
+
     lastCallAt = Date.now();
 
     try {
-      const result = await withRetry(entry.fn);
+      const result = await withRetry(entry.fn, 0, entry.signal);
       entry.resolve(result);
     } catch (err) {
       entry.reject(err);
@@ -59,10 +63,11 @@ async function processQueue(): Promise<void> {
 
 // ─── Retry with exponential backoff on 429 ───────────────────────────────────
 
-async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, attempt = 0, signal?: AbortSignal): Promise<T> {
   try {
     return await fn();
   } catch (err) {
+    if (signal?.aborted) throw new Error('cancelled');
     if (attempt >= MAX_RETRIES) throw err;
 
     const isRateLimit = isRateLimitError(err);
@@ -72,10 +77,11 @@ async function withRetry<T>(fn: () => Promise<T>, attempt = 0): Promise<T> {
     const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
     console.warn(`[rate-limiter] 429 received — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
     await sleep(delay);
+    if (signal?.aborted) throw new Error('cancelled');
 
     // Update lastCallAt so the queue respects the new baseline
     lastCallAt = Date.now();
-    return withRetry(fn, attempt + 1);
+    return withRetry(fn, attempt + 1, signal);
   }
 }
 
@@ -94,11 +100,25 @@ class GeminiRateLimiter {
    * Returns a promise that resolves when the call completes.
    *
    * Usage:
-   *   const response = await geminiLimiter.schedule(() => chat.sendMessage(msg));
+   *   const response = await geminiLimiter.schedule(() => chat.sendMessage(msg), signal);
    */
-  schedule<T>(fn: () => Promise<T>): Promise<T> {
+  schedule<T>(fn: () => Promise<T>, signal?: AbortSignal): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      queue.push({ fn, resolve, reject });
+      if (signal?.aborted) return reject(new Error('cancelled'));
+
+      const entry: QueueEntry<T> = { fn, resolve, reject, signal };
+      
+      const onAbort = () => {
+        const idx = queue.indexOf(entry);
+        if (idx !== -1) queue.splice(idx, 1);
+        reject(new Error('cancelled'));
+      };
+
+      if (signal) {
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
+
+      queue.push(entry);
       // Kick off queue processing (no-op if already running)
       processQueue().catch(err => console.error('[rate-limiter] Queue error:', err));
     });

@@ -54,11 +54,22 @@ export async function updateMessageMetadata(
   messageId: string,
   metadata: Record<string, unknown>
 ): Promise<void> {
-  const msg = await Message.findByIdAndUpdate(
-    messageId,
+  // Use sequential updates if seq is provided to prevent older fire-and-forget
+  // reportStep updates from overwriting a later 'done' status.
+  const query: Record<string, unknown> = { _id: new Types.ObjectId(messageId) };
+  if (typeof metadata.seq === 'number') {
+    query.$or = [
+      { 'metadata.seq': { $lt: metadata.seq } },
+      { 'metadata.seq': { $exists: false } },
+    ];
+  }
+
+  const msg = await Message.findOneAndUpdate(
+    query,
     { $set: { metadata } },
     { returnDocument: 'after' }
   );
+  
   if (msg) {
     broadcastToThread(msg.threadId.toString(), 'message:update', serializeMessage(msg));
   }

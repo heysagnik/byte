@@ -38,6 +38,7 @@ export default function ThreadPage() {
       await api.post(`/threads/${id}/cancel`, {});
     } catch (err) {
       console.error('Failed to cancel:', err);
+      throw err;
     }
   };
 

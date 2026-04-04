@@ -42,8 +42,16 @@ export default function ChatInput({
   const [value, setValue] = useState('');
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [popping, setPopping] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset cancelling state when run completes
+  useEffect(() => {
+    if (!isRunning) {
+      setCancelling(false);
+    }
+  }, [isRunning]);
 
   // Consume externally set value from suggestion chips
   useEffect(() => {
@@ -228,11 +236,21 @@ export default function ChatInput({
         {isRunning ? (
           <button
             type="button"
-            onClick={onCancel}
+            onClick={async () => {
+              if (cancelling) return;
+              setCancelling(true);
+              try {
+                await onCancel?.();
+              } catch {
+                setCancelling(false);
+              }
+            }}
+            disabled={cancelling}
             aria-label="Stop"
-            className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-all duration-150"
+            className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: 'var(--text-primary)', color: 'var(--bg-elevated)' }}
             onMouseEnter={e => {
+              if (cancelling) return;
               (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)';
               (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)';
             }}
