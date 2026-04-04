@@ -84,7 +84,7 @@ export default function MessageBubble({ message, threadId, isThinking, notificat
     >
       <div
         className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-        style={{ background: 'var(--text-primary)' }}
+        style={{ background: '#E05C20' }}
       >
         <svg width="10" height="10" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <path d="M5 5h5.5a2.5 2.5 0 0 1 0 5H5V5Z" fill="white" />
