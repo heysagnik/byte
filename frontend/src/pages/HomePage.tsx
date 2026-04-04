@@ -58,20 +58,31 @@ export default function HomePage() {
           />
         </div>
 
-        {/* ── Hero heading ────────────────────────────────────────── */}
+        {/* ── Hero heading — single line, no wrap ─────────────────── */}
         <h1
-          className="text-[34px] sm:text-[42px] font-semibold text-center leading-[1.18]"
+          className="font-semibold text-center leading-[1.15] whitespace-nowrap"
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-body)',
-            letterSpacing: '-0.025em',
-            textWrap: 'balance',
+            letterSpacing: '-0.03em',
+            fontSize: 'clamp(28px, 3.5vw, 48px)',
           }}
         >
-          What do you need<br />handled today?
+          What do you need handled today?
         </h1>
 
-        {/* ── Suggestion chips ────────────────────────────────────── */}
+        {/* ── Chat input ──────────────────────────────────────────── */}
+        <div className="w-full">
+          <ChatInput
+            onSend={handleSend}
+            disabled={sending}
+            placeholder="Ask byte to do anything..."
+            externalValue={inputVal}
+            onExternalValueConsumed={() => setInputVal('')}
+          />
+        </div>
+
+        {/* ── Suggestion chips — below the input ──────────────────── */}
         <div className="flex flex-wrap justify-center gap-2">
           {SUGGESTIONS.map(s => (
             <button
@@ -97,17 +108,6 @@ export default function HomePage() {
               {s}
             </button>
           ))}
-        </div>
-
-        {/* ── Chat input ──────────────────────────────────────────── */}
-        <div className="w-full">
-          <ChatInput
-            onSend={handleSend}
-            disabled={sending}
-            placeholder="Ask byte to do anything..."
-            externalValue={inputVal}
-            onExternalValueConsumed={() => setInputVal('')}
-          />
         </div>
 
       </div>

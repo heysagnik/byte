@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '@heroui/react';
-import { Plus, Search, LogOut, Trash2, Settings, Sparkles } from 'lucide-react';
+import { Plus, Search, LogOut, Trash2, Settings } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThreadList } from '../hooks/useThreadList';
 import { api } from '../lib/api';
@@ -44,28 +44,13 @@ export default function Sidebar() {
     >
       {/* ── Logo header ────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 pt-5 pb-3 shrink-0">
-        <div className="flex items-center gap-2.5">
-          {/* Byte logomark */}
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: 'var(--text-primary)' }}
+        <div className="flex items-center">
+          <span
+            className="font-bold tracking-[0.18em] uppercase leading-none"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontSize: '17px', letterSpacing: '0.18em' }}
           >
-            <Sparkles size={13} className="text-white" strokeWidth={1.75} />
-          </div>
-          <div className="flex flex-col gap-0">
-            <span
-              className="text-[13px] font-bold tracking-[0.15em] uppercase leading-none"
-              style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', letterSpacing: '0.15em' }}
-            >
-              BYTE
-            </span>
-            <span
-              className="text-[9px] leading-none"
-              style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-hint)', letterSpacing: '0.04em' }}
-            >
-              PERSONAL AI AGENT
-            </span>
-          </div>
+            BYTE
+          </span>
         </div>
         <button
           aria-label="Settings"
