@@ -18,7 +18,8 @@
 ---
 
 ## 🏗️ High-Level Architecture
-*(Insert High-Level Architecture Diagram Here)*
+<img width="8192" height="3547" alt="final high arch (m)" src="https://github.com/user-attachments/assets/45bbbcee-d46f-44cd-985f-fed2f8c772c8" />
+
 
 ---
 
@@ -42,23 +43,8 @@ graph TD
 ### 2. Social Friction Buffer: The Call Execution Pattern
 How Byte handles nerve-wracking phone calls on your behalf.
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Byte
-    participant Twilio/ElevenLabs
-    participant ExternalRecipient
+<img width="7367" height="3315" alt="mermaideg" src="https://github.com/user-attachments/assets/fe4e01b9-b15d-4669-a17d-197eab32cd73" />
 
-    User->>Byte: "Call my gym and cancel my membership."
-    Byte->>Byte: Fetch user context & Gym details
-    Byte->>Twilio/ElevenLabs: Dispatch Outbound Call (Tone: Professional/Assertive)
-    Twilio/ElevenLabs->>ExternalRecipient: Ringing...
-    ExternalRecipient->>Twilio/ElevenLabs: "Hello, Gym Support."
-    Twilio/ElevenLabs->>Byte: Stream Audio
-    Byte->>Twilio/ElevenLabs: AI processes and negotiates cancellation
-    Byte->>User: Live Event Stream ("Negotiating...", "Cancelled.")
-    Twilio/ElevenLabs-->>ExternalRecipient: "Thank you, goodbye."
-```
 
 ---
 
