@@ -13,7 +13,7 @@
   --accent:      #E05C20;
 
   /* Font families */
-  --font-mono: 'Space Mono', 'Courier New', monospace;   /* chrome / labels / logo */
+  --font-mono: 'Space Mono', 'Courier New', monospace;
   --font-body: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
@@ -32,33 +32,72 @@ h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
 }
 
-/* Chrome elements use Space Mono */
 .font-mono-chrome {
   font-family: var(--font-mono);
 }
 
-/* Suppress browser grammar/translation color highlights inside message text */
 [translate="no"] {
   -webkit-text-fill-color: inherit;
 }
 
-/* physics-active-state */
+/* Global press scale */
 button:active:not(:disabled),
 [role="button"]:active:not(:disabled) {
   transform: scale(0.97);
-  transition: transform 120ms ease-out;
+  transition: transform 100ms ease-out;
 }
 
 .content-area {
   overflow-x: hidden;
 }
 
-/* ─── Step entrance animation ─────────────────────────────────────────────── */
+/* ─── Fade-up entrance (staggered page load) ──────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fadeUp 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Shake (auth error) ──────────────────────────────────────────────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-5px); }
+  35%       { transform: translateX(5px); }
+  55%       { transform: translateX(-3px); }
+  75%       { transform: translateX(3px); }
+  90%       { transform: translateX(-1px); }
+}
+.animate-shake {
+  animation: shake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* ─── Pop-in (send button on click) ──────────────────────────────────────── */
+@keyframes popIn {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.82); }
+  70%  { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.animate-pop {
+  animation: popIn 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ─── Slide-in from left (sidebar thread items) ───────────────────────────── */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in {
+  animation: slideInLeft 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Step entrance ───────────────────────────────────────────────────────── */
 @keyframes stepIn {
   from { opacity: 0; transform: translateY(3px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
 .animate-step-in {
   animation: stepIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -68,12 +107,11 @@ button:active:not(:disabled),
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.5; }
 }
-
 .animate-skeleton {
   animation: skeletonPulse 1.5s ease-in-out infinite;
 }
 
-/* ─── Accent dot pulse (homepage) ─────────────────────────────────────────── */
+/* ─── Accent dot pulse ────────────────────────────────────────────────────── */
 @keyframes accentPing {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.6; transform: scale(0.85); }
@@ -82,3 +120,49 @@ button:active:not(:disabled),
   animation: accentPing 2s ease-in-out infinite;
 }
 
+
+/* ─── Input focus glow ────────────────────────────────────────────────────── */
+.input-shell {
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+.input-shell:focus-within {
+  box-shadow: 0 0 0 3px rgba(224, 92, 32, 0.12), 0 2px 12px rgba(17,17,16,0.06);
+}
+
+/* ─── Chip hover lift ─────────────────────────────────────────────────────── */
+.chip-hover {
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.chip-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(17,17,16,0.1);
+}
+
+/* ─── Auth card entrance ──────────────────────────────────────────────────── */
+.auth-card-enter {
+  animation: fadeUp 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Sidebar item hover background slide ─────────────────────────────────── */
+.thread-item {
+  position: relative;
+  overflow: hidden;
+}
+.thread-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 0;
+}
+.thread-item:hover::before {
+  transform: scaleX(1);
+}
+.thread-item > * {
+  position: relative;
+  z-index: 1;
+}

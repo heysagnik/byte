@@ -43,36 +43,39 @@ export default function HomePage() {
     >
       <div className="w-full max-w-2xl flex flex-col items-center gap-8">
 
-        {/* ── Greeting label ──────────────────────────────────────── */}
-        <div className="flex items-center gap-2.5">
+        {/* ── Greeting label — entrance: delay 0ms ────────────────── */}
+        <div className="flex items-center gap-2.5 animate-fade-up" style={{ animationDelay: '0ms' }}>
           <span
             className="text-[11px] tracking-[0.16em] uppercase"
             style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}
           >
             {getGreeting()}
           </span>
-          {/* Accent live-dot */}
           <span
             className="w-[6px] h-[6px] rounded-full shrink-0 animate-accent-ping"
             style={{ background: 'var(--accent)' }}
           />
         </div>
 
-        {/* ── Hero heading — single line, no wrap ─────────────────── */}
+        {/* ── Hero heading — entrance: delay 60ms ─────────────────── */}
         <h1
-          className="font-semibold text-center leading-[1.15] whitespace-nowrap"
+          className="font-semibold text-center leading-[1.15] whitespace-nowrap animate-fade-up"
           style={{
             color: 'var(--text-primary)',
             fontFamily: 'var(--font-body)',
             letterSpacing: '-0.03em',
             fontSize: 'clamp(28px, 3.5vw, 48px)',
+            animationDelay: '60ms',
+            transition: 'transform 200ms ease',
           }}
+          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.008)')}
+          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
           What do you need handled today?
         </h1>
 
-        {/* ── Chat input ──────────────────────────────────────────── */}
-        <div className="w-full">
+        {/* ── Chat input — entrance: delay 120ms ──────────────────── */}
+        <div className="w-full animate-fade-up" style={{ animationDelay: '120ms' }}>
           <ChatInput
             onSend={handleSend}
             disabled={sending}
@@ -82,14 +85,14 @@ export default function HomePage() {
           />
         </div>
 
-        {/* ── Suggestion chips — below the input ──────────────────── */}
-        <div className="flex flex-wrap justify-center gap-2">
+        {/* ── Suggestion chips — entrance: delay 200ms ────────────── */}
+        <div className="flex flex-wrap justify-center gap-2 animate-fade-up" style={{ animationDelay: '200ms' }}>
           {SUGGESTIONS.map(s => (
             <button
               key={s}
               type="button"
               onClick={() => setInputVal(s)}
-              className="px-4 h-8 rounded-full text-[12px] transition-all duration-150"
+              className="chip-hover px-4 h-8 rounded-full text-[12px]"
               style={{
                 fontFamily: 'var(--font-body)',
                 background: 'var(--bg-elevated)',
@@ -97,11 +100,11 @@ export default function HomePage() {
                 color: 'var(--text-muted)',
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.border = '1px solid var(--text-primary)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--text-primary)';
                 (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLButtonElement).style.border = '1px solid var(--border)';
+                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)';
                 (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
               }}
             >

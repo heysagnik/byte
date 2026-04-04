@@ -45,12 +45,23 @@ export default function Sidebar() {
       {/* ── Logo header ────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 pt-5 pb-3 shrink-0">
         <div className="flex items-center">
-          <span
-            className="font-bold tracking-[0.18em] uppercase leading-none"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontSize: '17px', letterSpacing: '0.18em' }}
-          >
-            BYTE
-          </span>
+          {['B','Y','T','E'].map((letter) => {
+            const isT = letter === 'T';
+            return (
+              <span
+                key={letter}
+                className="font-bold uppercase leading-none"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  color: isT ? 'var(--accent)' : 'var(--text-primary)',
+                  fontSize: '17px',
+                  letterSpacing: '0.18em',
+                }}
+              >
+                {letter}
+              </span>
+            );
+          })}
         </div>
         <button
           aria-label="Settings"
@@ -123,8 +134,12 @@ export default function Sidebar() {
               Recent
             </p>
             <nav aria-label="Chat history" className="flex flex-col gap-0.5">
-              {filtered.map(t => (
-                <div key={t.id} className="group relative flex items-center">
+              {filtered.map((t, idx) => (
+                <div
+                  key={t.id}
+                  className="group relative flex items-center animate-slide-in"
+                  style={{ animationDelay: `${idx * 30}ms` }}
+                >
                   <button
                     onClick={() => navigate(`/thread/${t.id}`)}
                     aria-current={t.id === activeThreadId ? 'page' : undefined}

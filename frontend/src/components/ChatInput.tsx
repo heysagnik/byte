@@ -18,6 +18,7 @@ export default function ChatInput({
   onExternalValueConsumed,
 }: ChatInputProps) {
   const [value, setValue] = useState('');
+  const [popping, setPopping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Consume externally set value from suggestion chips
@@ -39,6 +40,9 @@ export default function ChatInput({
   const handleSend = () => {
     const trimmed = value.trim();
     if (!trimmed || disabled) return;
+    // Trigger pop animation
+    setPopping(true);
+    setTimeout(() => setPopping(false), 300);
     onSend(trimmed);
     setValue('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -55,7 +59,7 @@ export default function ChatInput({
 
   return (
     <div
-      className="flex flex-col px-3 pt-3 pb-2.5 rounded-2xl relative z-10 transition-all duration-180"
+      className="input-shell flex flex-col px-3 pt-3 pb-2.5 rounded-2xl relative z-10"
       style={{
         background: 'var(--bg-surface)',
         border: '1.5px solid var(--text-primary)',
@@ -77,31 +81,41 @@ export default function ChatInput({
           fontSize: '14px',
           color: 'var(--text-primary)',
         }}
-        /* placeholder color via CSS variable — injected via a style tag trick */
       />
 
       <div className="flex items-center justify-between">
-        {/* Attachment / extra action */}
+        {/* Left actions */}
         <div className="flex items-center gap-1">
           <button
             type="button"
             aria-label="Add attachment"
-            className="w-8 h-8 flex items-center justify-center rounded-full transition-colors duration-150"
+            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150"
             style={{ color: 'var(--text-hint)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-hint)')}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.transform = 'rotate(45deg)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--text-hint)';
+              e.currentTarget.style.transform = 'rotate(0deg)';
+            }}
           >
             <Plus size={16} strokeWidth={2} />
           </button>
           <button
             type="button"
             aria-label="Voice input"
-            className="w-8 h-8 flex items-center justify-center rounded-full transition-colors duration-150"
+            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150"
             style={{ color: 'var(--text-hint)' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-hint)')}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = 'var(--text-hint)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
           >
-            {/* Mic icon */}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -110,23 +124,29 @@ export default function ChatInput({
           </button>
         </div>
 
-        {/* Send button: #111110 default → #E05C20 hover */}
+        {/* Send button — pop animation on click, accent hover */}
         <button
           type="button"
           onClick={handleSend}
           disabled={!canSend}
           aria-label="Send message"
-          className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-all duration-150"
+          className={`w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-all duration-150 ${popping ? 'animate-pop' : ''}`}
           style={{
             background: canSend ? 'var(--text-primary)' : 'var(--border)',
             color: canSend ? 'var(--bg-elevated)' : 'var(--text-hint)',
             cursor: canSend ? 'pointer' : 'not-allowed',
           }}
           onMouseEnter={e => {
-            if (canSend) (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)';
+            if (canSend) {
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)';
+              (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.08)';
+            }
           }}
           onMouseLeave={e => {
-            if (canSend) (e.currentTarget as HTMLButtonElement).style.background = 'var(--text-primary)';
+            if (canSend) {
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--text-primary)';
+              (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+            }
           }}
         >
           {disabled

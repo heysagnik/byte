@@ -8,6 +8,7 @@ export default function AuthForm() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [shaking, setShaking] = useState(false);
   const { login } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,6 +27,9 @@ export default function AuthForm() {
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
         'Something went wrong';
       setErrorMsg(msg);
+      // Shake the form on error
+      setShaking(true);
+      setTimeout(() => setShaking(false), 400);
     } finally {
       setLoading(false);
     }
@@ -33,7 +37,7 @@ export default function AuthForm() {
 
   return (
     <div
-      className="w-full max-w-sm rounded-2xl flex flex-col overflow-hidden"
+      className={`auth-card-enter w-full max-w-sm rounded-2xl flex flex-col overflow-hidden ${shaking ? 'animate-shake' : ''}`}
       style={{ border: '1px solid var(--border)', background: 'var(--bg-elevated)' }}
     >
       {/* ── Logo header band ───────────────────────────────────── */}
@@ -90,8 +94,14 @@ export default function AuthForm() {
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-body)',
             }}
-            onFocus={e => (e.currentTarget.style.borderColor = 'var(--text-primary)')}
-            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+            onFocus={e => {
+              e.currentTarget.style.borderColor = 'var(--text-primary)';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(224,92,32,0.12)';
+            }}
+            onBlur={e => {
+              e.currentTarget.style.borderColor = 'var(--border)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           />
         </div>
 
@@ -120,14 +130,20 @@ export default function AuthForm() {
               color: 'var(--text-primary)',
               fontFamily: 'var(--font-body)',
             }}
-            onFocus={e => (e.currentTarget.style.borderColor = 'var(--text-primary)')}
-            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+            onFocus={e => {
+              e.currentTarget.style.borderColor = 'var(--text-primary)';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(224,92,32,0.12)';
+            }}
+            onBlur={e => {
+              e.currentTarget.style.borderColor = 'var(--border)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
           />
         </div>
 
         {/* Error */}
         {errorMsg && (
-          <p className="text-[13px]" style={{ color: 'var(--accent)' }}>
+          <p className="text-[13px] animate-fade-up" style={{ color: 'var(--accent)' }}>
             {errorMsg}
           </p>
         )}
