@@ -40,12 +40,12 @@ export default function MessageBubble({ message, threadId, isThinking, notificat
   if (message.role === 'user') {
     return (
       <div className="flex justify-end py-1.5">
-        {/* visual-border-alpha-colors — transparent border adapts to bg */}
         <div
-          className="max-w-[78%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed text-[#111]"
+          className="max-w-[78%] rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed"
           style={{
-            backgroundColor: '#F2F2F2',
-            border: '1px solid rgba(0,0,0,0.05)',
+            background: 'var(--text-primary)',   /* #111110 */
+            color: 'var(--bg-elevated)',          /* light text on dark bg */
+            fontFamily: 'var(--font-body)',
           }}
         >
           <RenderText text={message.content} />
@@ -53,6 +53,29 @@ export default function MessageBubble({ message, threadId, isThinking, notificat
       </div>
     );
   }
+
+  // ── Byte logo mark — shown inline before agent message content ────────────
+  const ByteMark = () => (
+    <div
+      className="flex items-center gap-2 mb-2"
+    >
+      <div
+        className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
+        style={{ background: 'var(--text-primary)' }}
+      >
+        <svg width="10" height="10" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M5 5h5.5a2.5 2.5 0 0 1 0 5H5V5Z" fill="white" />
+          <path d="M5 10h6a2.5 2.5 0 0 1 0 5H5v-5Z" fill="white" opacity="0.6" />
+        </svg>
+      </div>
+      <span
+        className="text-[10px] uppercase tracking-widest"
+        style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+      >
+        BYTE
+      </span>
+    </div>
+  );
 
   // ── Agent message ─────────────────────────────────────────────────────────
   return (
@@ -65,8 +88,19 @@ export default function MessageBubble({ message, threadId, isThinking, notificat
           notifications={notifications}
         />
         {message.content && (
-          <div className="text-[15px] leading-[1.7] text-[#111]">
-            <RenderText text={message.content} />
+          <div>
+            <ByteMark />
+            <div
+              className="rounded-2xl px-4 py-3 text-[14px] leading-[1.7] inline-block max-w-full"
+              style={{
+                background: 'var(--bg-elevated)',        /* #F7F6F4 */
+                border: '1px solid var(--border)',        /* #DDDBD8 */
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              <RenderText text={message.content} />
+            </div>
           </div>
         )}
       </div>

@@ -6,14 +6,16 @@ interface AppShellProps {
 
 export default function AppShell({ children }: AppShellProps) {
   return (
-    // Two-column split — sidebar always visible, content takes remaining width
-    <div className="h-screen flex overflow-hidden">
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-page)' }}>
       <Sidebar />
-
-      {/* Content area — white, full height, grows to fill */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
+      {/* Content area */}
+      <div
+        className="flex-1 flex flex-col min-w-0"
+        style={{ background: 'var(--bg-page)' }}
+      >
         {children}
       </div>
     </div>
   );
 }
+

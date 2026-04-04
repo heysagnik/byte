@@ -35,12 +35,12 @@ export default function ThreadPage() {
             {[80, 55, 70].map((w, i) => (
               <div key={i} className="flex flex-col gap-3">
                 <div className="flex justify-end">
-                  <div className="h-9 rounded-xl animate-pulse bg-[#F5F5F5]" style={{ width: `${w}%` }} />
+                  <div className="h-9 rounded-2xl animate-pulse" style={{ width: `${w}%`, background: 'var(--bg-surface)' }} />
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-1 space-y-2 pt-1">
-                    <div className="h-3 rounded animate-pulse bg-[#F5F5F5]" style={{ width: '90%' }} />
-                    <div className="h-3 rounded animate-pulse bg-[#F5F5F5]" style={{ width: '65%' }} />
+                    <div className="h-3 rounded animate-pulse" style={{ width: '90%', background: 'var(--bg-surface)' }} />
+                    <div className="h-3 rounded animate-pulse" style={{ width: '65%', background: 'var(--bg-surface)' }} />
                   </div>
                 </div>
               </div>

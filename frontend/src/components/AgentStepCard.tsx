@@ -135,10 +135,13 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
       >
         <Accordion.Item key="steps" id="steps">
           <Accordion.Heading>
-            <Accordion.Trigger className="text-[13px] font-medium text-[#666] py-1.5 px-2 rounded-lg hover:bg-[#F9F9F9] outline-none transition-colors w-full flex items-center gap-2 w-max">
+            <Accordion.Trigger
+              className="py-1.5 px-2 rounded-lg outline-none transition-colors w-full flex items-center gap-2 w-max"
+              style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}
+            >
               {/* Pulsing dot while agent is active */}
               {!isDone && (
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#111] animate-pulse shrink-0" />
+                <span className="inline-block w-1.5 h-1.5 rounded-full shrink-0 animate-accent-ping" style={{ background: 'var(--accent)' }} />
               )}
               {headerText}
             </Accordion.Trigger>
@@ -148,7 +151,7 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
               {timeline.length > 0 && (
                 <div
                   className="mt-1 ml-2 pl-3.5 grid gap-y-2.5 gap-x-3 items-start"
-                  style={{ gridTemplateColumns: 'min-content 1fr', borderLeft: '1px solid #E5E5E5' }}
+                  style={{ gridTemplateColumns: 'min-content 1fr', borderLeft: '1px solid var(--border)' }}
                 >
                   {timeline.map((item, i) => {
                     const isLast = !isDone && i === timeline.length - 1;
@@ -164,17 +167,20 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                               <Chip
                                 size="sm"
                                 variant="soft"
-                                className={`h-[20px] px-1 bg-[#F5F5F5] text-[#111] text-[11px] font-medium transition-opacity ${isLast ? 'opacity-100' : 'opacity-60'}`}
+                                className={`h-[20px] px-1 text-[11px] font-medium transition-opacity ${isLast ? 'opacity-100' : 'opacity-50'}`}
+                                style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
                               >
                                 {stepLabel[step.type] ?? step.type}
                               </Chip>
                             )}
                           </div>
-                          <div className={`text-[13.5px] leading-[1.6] animate-step-in ${showChip ? 'text-[#333] pt-[3px]' : 'text-[#666]'} ${isLast ? 'font-[450]' : ''}`}>
+                          <div
+                            className={`text-[13px] leading-[1.6] animate-step-in ${isLast ? 'font-medium' : ''}`}
+                            style={{ color: showChip ? 'var(--text-primary)' : 'var(--text-muted)', fontFamily: 'var(--font-body)', paddingTop: showChip ? '3px' : undefined }}
+                          >
                             {step.content}
-                            {/* Blinking cursor on the active step */}
                             {isLast && (
-                              <span className="inline-block w-[1.5px] h-[1em] bg-[#888] ml-1 align-middle animate-pulse" />
+                              <span className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse" style={{ background: 'var(--accent)' }} />
                             )}
                           </div>
                         </div>
@@ -191,15 +197,19 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                           <Chip
                             size="sm"
                             variant="soft"
-                            className={`h-[20px] px-1 bg-[#F5F5F5] text-[#111] text-[11px] font-medium transition-opacity ${isLast ? 'opacity-100' : 'opacity-60'}`}
+                            className={`h-[20px] px-1 text-[11px] font-medium transition-opacity ${isLast ? 'opacity-100' : 'opacity-50'}`}
+                            style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
                           >
                             {label}
                           </Chip>
                         </div>
-                        <div className={`text-[13.5px] leading-[1.6] animate-step-in text-[#333] pt-[3px] ${isLast ? 'font-[450]' : ''}`}>
+                        <div
+                          className={`text-[13px] leading-[1.6] animate-step-in pt-[3px] ${isLast ? 'font-medium' : ''}`}
+                          style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
+                        >
                           {notif.content}
                           {isLast && (
-                            <span className="inline-block w-[1.5px] h-[1em] bg-[#888] ml-1 align-middle animate-pulse" />
+                            <span className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse" style={{ background: 'var(--accent)' }} />
                           )}
                         </div>
                       </div>
@@ -209,8 +219,16 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
               )}
 
               {metadata.type === 'waiting_approval' && metadata.options && (
-                <div className="rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] p-4 space-y-3 mt-3">
-                  <p className="text-[13px] font-medium text-[#111]">Choose an option to continue:</p>
+                <div
+                  className="rounded-xl p-4 space-y-3 mt-3"
+                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)' }}
+                >
+                  <p
+                    className="text-[11px] uppercase tracking-widest"
+                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.1em' }}
+                  >
+                    Choose an option
+                  </p>
                   <div className="space-y-2">
                     {metadata.options.map((option, i) => (
                       <Button
@@ -219,15 +237,19 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                         fullWidth
                         isDisabled={approving}
                         onPress={() => handleApprove(i)}
-                        className="justify-between h-auto py-2.5 px-3 rounded-lg border-[#E5E5E5] bg-white hover:bg-[#F5F5F5] transition-colors"
+                        className="justify-between h-auto py-2.5 px-3 rounded-lg transition-colors"
+                        style={{ background: 'var(--bg-surface)', borderColor: 'var(--border)' }}
                       >
-                        <span className="font-medium text-[13px] text-[#111] flex items-center gap-2">
-                          {option.recommended && <span className="text-black">★</span>}
+                        <span
+                          className="font-medium text-[13px] flex items-center gap-2"
+                          style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
+                        >
+                          {option.recommended && <span style={{ color: 'var(--accent)' }}>★</span>}
                           {option.label}
                         </span>
                         <span className="flex flex-col items-end gap-0.5 text-right">
-                          {option.price && <span className="text-[13px] font-medium tabular-nums text-[#111]">{option.price}</span>}
-                          {option.details && <span className="text-[11px] text-[#666] font-normal leading-tight">{option.details}</span>}
+                          {option.price && <span className="text-[13px] font-medium tabular-nums" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>{option.price}</span>}
+                          {option.details && <span className="text-[11px] font-normal leading-tight" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>{option.details}</span>}
                         </span>
                       </Button>
                     ))}

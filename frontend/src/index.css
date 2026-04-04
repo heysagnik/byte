@@ -1,25 +1,40 @@
 @import "tailwindcss";
 @import "@heroui/react/styles";
 
+/* ─── Byte Design Tokens ───────────────────────────────────────────────────── */
+:root {
+  --bg-page:     #F2F1EF;
+  --bg-surface:  #EDEBE8;
+  --bg-elevated: #F7F6F4;
+  --border:      #DDDBD8;
+  --text-primary:#111110;
+  --text-muted:  #888880;
+  --text-hint:   #AAAAAA;
+  --accent:      #E05C20;
+
+  /* Font families */
+  --font-mono: 'Space Mono', 'Courier New', monospace;   /* chrome / labels / logo */
+  --font-body: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;
-  /* staging-dim-background — warm off-white so white cards appear elevated */
-  background-color: #FAF8F5;
-  color: #111;
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-
-  /* type-antialiased-on-retina */
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* type-text-wrap-pretty */
   text-wrap: pretty;
 }
 
-/* type-text-wrap-balance-headings */
 h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
+}
+
+/* Chrome elements use Space Mono */
+.font-mono-chrome {
+  font-family: var(--font-mono);
 }
 
 /* Suppress browser grammar/translation color highlights inside message text */
@@ -27,20 +42,18 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-text-fill-color: inherit;
 }
 
-/* physics-active-state — all interactive elements scale on press (120ms, duration-press-hover) */
+/* physics-active-state */
 button:active:not(:disabled),
 [role="button"]:active:not(:disabled) {
   transform: scale(0.97);
   transition: transform 120ms ease-out;
 }
 
-/* container-overflow-hidden — prevent horizontal bleed during sidebar slide */
 .content-area {
   overflow-x: hidden;
 }
 
 /* ─── Step entrance animation ─────────────────────────────────────────────── */
-/* physics-no-excessive-stagger — stagger < 50ms per item, 200ms total */
 @keyframes stepIn {
   from { opacity: 0; transform: translateY(3px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -49,9 +62,6 @@ button:active:not(:disabled),
 .animate-step-in {
   animation: stepIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-
-/* Stagger each step by its index (applied via inline style in AgentStepCard) */
-/* timing-under-300ms — animation itself is 220ms, stagger capped at 40ms × N */
 
 /* ─── Skeleton pulse ──────────────────────────────────────────────────────── */
 @keyframes skeletonPulse {
@@ -62,3 +72,13 @@ button:active:not(:disabled),
 .animate-skeleton {
   animation: skeletonPulse 1.5s ease-in-out infinite;
 }
+
+/* ─── Accent dot pulse (homepage) ─────────────────────────────────────────── */
+@keyframes accentPing {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.85); }
+}
+.animate-accent-ping {
+  animation: accentPing 2s ease-in-out infinite;
+}
+
