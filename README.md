@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🤖 Byte AI</h1>
+  <h1>🤖 Byte</h1>
   <p><h3><strong>Your autonomous, personal AI agent. Tell it what to do — it gets it done.</strong></h3></p>
   <p>
     <i>Byte AI dynamically handles complex tasks including real-world voice calls, deep web research, and personal scheduling. Built using a modern React 19 + Node.js stack with Gemini & ElevenLabs integration.</i>
