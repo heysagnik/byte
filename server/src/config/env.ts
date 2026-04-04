@@ -8,7 +8,7 @@ const EnvSchema = z.object({
   MONGODB_URI: z.string().default('mongodb://localhost:27017/byte'),
 
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
-  GEMINI_MODEL: z.string().default('gemini-3-flash-preview'),
+  GEMINI_MODEL: z.string().default('gemini-2.5-pro'),
 
   TWILIO_ACCOUNT_SID: z.string().min(1, 'TWILIO_ACCOUNT_SID is required'),
   TWILIO_AUTH_TOKEN: z.string().min(1, 'TWILIO_AUTH_TOKEN is required'),
@@ -19,6 +19,8 @@ const EnvSchema = z.object({
   ELEVENLABS_PHONE_NUMBER_ID: z.string().min(1, 'ELEVENLABS_PHONE_NUMBER_ID is required'),
 
   SEARCH_API_KEY: z.string().min(1, 'SEARCH_API_KEY is required'),
+
+  GROQ_API_KEY: z.string().optional(),
 
   SERVER_BASE_URL: z.string().default('http://localhost:3001'),
 });

@@ -221,17 +221,27 @@ export class PersonalAgent {
       return text;
     }
 
-    const FALLBACK_MODEL = 'gemma-4-31b-it';
+    try {
+      return await this._execute(userMessage, callerName);
+    } catch (err) {
+      // Preserve whatever steps we collected before the failure — don't wipe them
+      if (this.agentMessageId) {
+        await db.updateMessageMetadata(this.agentMessageId, {
+          type: 'done',
+          steps: this.steps,
+          seq: this.stepCount + 1,
+        }).catch(() => {});
+      }
+      throw err;
+    }
+  }
+
+  private async _execute(userMessage: string, callerName: string): Promise<string> {
     const tools = registry.allTools();
     const systemInstruction = buildSystemPrompt(callerName);
 
-    // gemma-4-31b-it does not support function calling — omit tools when using it as fallback
     const getModel = (modelName: string) =>
-      this.genAI.getGenerativeModel({
-        model: modelName,
-        ...(modelName === FALLBACK_MODEL ? {} : { tools }),
-        systemInstruction,
-      });
+      this.genAI.getGenerativeModel({ model: modelName, tools, systemInstruction });
 
     const history = await this.buildHistory();
 
@@ -244,17 +254,9 @@ export class PersonalAgent {
       reportStep: this.reportStep.bind(this),
     };
 
-    // Try primary model, fall back to gemini-2.5-flash on 503 Service Unavailable
-    let activeModel = env.GEMINI_MODEL;
-    let chat = getModel(activeModel).startChat({ history });
-    let response = await chat.sendMessage(userMessage).catch(async (err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded')) {
-        console.warn(`[byte] ${activeModel} unavailable, falling back to ${FALLBACK_MODEL}`);
-        activeModel = FALLBACK_MODEL;
-        chat = getModel(FALLBACK_MODEL).startChat({ history });
-        return chat.sendMessage(userMessage);
-      }
+    const chat = getModel(env.GEMINI_MODEL).startChat({ history });
+    let response = await chat.sendMessage(userMessage).catch(async (err) => {
+      await this.reportStep({ type: 'error', content: `Failed to reach AI: ${err instanceof Error ? err.message : String(err)}`, timestamp: Date.now() });
       throw err;
     });
 
@@ -276,7 +278,7 @@ export class PersonalAgent {
       let results: FunctionResponsePart[];
 
       if (callParts.some(p => isSequential(p.functionCall!.name))) {
-        // Run all calls sequentially when any sequential tool is present
+        // Sequential: run one at a time, emit error step on failure
         results = [];
         for (const part of callParts) {
           const { name, args } = part.functionCall!;
@@ -285,11 +287,12 @@ export class PersonalAgent {
             results.push({ functionResponse: { name, response: { result } } });
           } catch (err) {
             const errMsg = err instanceof Error ? err.message : 'Tool call failed';
+            await this.reportStep({ type: 'error', content: `${name}: ${errMsg}`, timestamp: Date.now() });
             results.push({ functionResponse: { name, response: { error: errMsg } } });
           }
         }
       } else {
-        // All parallel-safe (web_search etc.) — run concurrently
+        // Parallel: run concurrently, emit error steps for failures
         const settled = await Promise.allSettled(
           callParts.map(async part => {
             const { name, args } = part.functionCall!;
@@ -297,28 +300,35 @@ export class PersonalAgent {
             return { functionResponse: { name, response: { result } } } as FunctionResponsePart;
           })
         );
-        results = settled.map((r, i) =>
-          r.status === 'fulfilled'
-            ? r.value
-            : { functionResponse: { name: callParts[i].functionCall!.name, response: { error: r.reason instanceof Error ? r.reason.message : 'Tool call failed' } } }
-        );
+        // Collect error steps and emit them before continuing
+        const errorSteps: Promise<void>[] = [];
+        results = settled.map((r, i) => {
+          if (r.status === 'fulfilled') return r.value;
+          const name = callParts[i].functionCall!.name;
+          const errMsg = r.reason instanceof Error ? r.reason.message : 'Tool call failed';
+          errorSteps.push(this.reportStep({ type: 'error', content: `${name}: ${errMsg}`, timestamp: Date.now() }));
+          return { functionResponse: { name, response: { error: errMsg } } } as FunctionResponsePart;
+        });
+        await Promise.all(errorSteps);
       }
 
-      response = await chat.sendMessage(results as Part[]).catch(async (err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        if ((msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('overloaded')) && activeModel !== FALLBACK_MODEL) {
-          console.warn(`[byte] ${activeModel} unavailable mid-loop, switching to ${FALLBACK_MODEL}`);
-          activeModel = FALLBACK_MODEL;
-          chat = getModel(FALLBACK_MODEL).startChat({ history });
-          return chat.sendMessage(results as Part[]);
-        }
+      await this.reportStep({ type: 'thinking', content: 'Processing results...', timestamp: Date.now() });
+
+      response = await chat.sendMessage(results as Part[]).catch(async (err) => {
+        await this.reportStep({ type: 'error', content: `AI error: ${err instanceof Error ? err.message : String(err)}`, timestamp: Date.now() });
         throw err;
       });
     }
 
-    const finalText = response.response.text();
+    if (iterations >= MAX_ITERATIONS) {
+      await this.reportStep({ type: 'error', content: 'Maximum steps reached — stopping early.', timestamp: Date.now() });
+    }
 
-    // Mark placeholder done — use current stepCount so this write is always newest
+    // Safe text extraction — response may not contain text if we hit MAX_ITERATIONS
+    let finalText = '';
+    try { finalText = response.response.text(); } catch { /* response had no text part */ }
+
+    // Mark placeholder done
     if (this.agentMessageId) {
       await db.updateMessageMetadata(this.agentMessageId, {
         type: 'done',

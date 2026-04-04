@@ -4,9 +4,9 @@
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;
-  /* staging-dim-background — slightly creamy off-white so white Surface cards appear elevated */
+  /* staging-dim-background — warm off-white so white cards appear elevated */
   background-color: #FAF8F5;
-  color: var(--foreground);
+  color: #111;
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 
   /* type-antialiased-on-retina */
@@ -22,23 +22,43 @@ h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
 }
 
-/* Disable browser grammar/translation color highlights on message text */
+/* Suppress browser grammar/translation color highlights inside message text */
 [translate="no"] {
   -webkit-text-fill-color: inherit;
 }
 
-/* physics-active-state — interactive elements scale on press */
+/* physics-active-state — all interactive elements scale on press (120ms, duration-press-hover) */
 button:active:not(:disabled),
 [role="button"]:active:not(:disabled) {
   transform: scale(0.97);
-  transition: transform 150ms ease-out; /* duration-press-hover */
+  transition: transform 120ms ease-out;
 }
 
-/* physics-entrance-animation */
-@keyframes slideFadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+/* container-overflow-hidden — prevent horizontal bleed during sidebar slide */
+.content-area {
+  overflow-x: hidden;
 }
+
+/* ─── Step entrance animation ─────────────────────────────────────────────── */
+/* physics-no-excessive-stagger — stagger < 50ms per item, 200ms total */
+@keyframes stepIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .animate-step-in {
-  animation: slideFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: stepIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stagger each step by its index (applied via inline style in AgentStepCard) */
+/* timing-under-300ms — animation itself is 220ms, stagger capped at 40ms × N */
+
+/* ─── Skeleton pulse ──────────────────────────────────────────────────────── */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+.animate-skeleton {
+  animation: skeletonPulse 1.5s ease-in-out infinite;
 }

@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import MessageBubble from './MessageBubble';
-import NotificationChip from './NotificationChip';
 import type { Message } from '../hooks/useThread';
 import { CONTENT_WIDTH } from '../pages/ThreadPage';
 
 interface ThreadViewProps {
   messages: Message[];
   threadId: string;
+  onlyLatest?: boolean;
 }
 
 interface Turn {
@@ -43,13 +43,16 @@ function buildTurns(messages: Message[]): Turn[] {
   return turns;
 }
 
-export default function ThreadView({ messages, threadId }: ThreadViewProps) {
+export default function ThreadView({ messages, threadId, onlyLatest }: ThreadViewProps) {
   const lastTurnRef = useRef<HTMLDivElement>(null);
 
-  const lastContent = messages[messages.length - 1]?.content ?? '';
+  const allTurns = buildTurns(messages);
+  const turns = onlyLatest ? allTurns.slice(-1) : allTurns;
+
   useEffect(() => {
-    lastTurnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [messages.length, lastContent]);
+    lastTurnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTurns.length]);
 
   if (messages.length === 0) {
     return (
@@ -58,8 +61,6 @@ export default function ThreadView({ messages, threadId }: ThreadViewProps) {
       </div>
     );
   }
-
-  const turns = buildTurns(messages);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -80,19 +81,26 @@ export default function ThreadView({ messages, threadId }: ThreadViewProps) {
               {/* User message */}
               <MessageBubble message={turn.user} threadId={threadId} />
 
-              {/* Agent progress — spinner while thinking, collapsed steps when done */}
-              {turn.placeholder && (
+              {/* Agent progress — steps + notifications merged in one accordion */}
+              {(turn.placeholder || turn.notifications.length > 0) && (
                 <MessageBubble
-                  message={turn.placeholder}
+                  message={turn.placeholder ?? {
+                    id: `placeholder-${turn.user.id}`,
+                    threadId,
+                    role: 'agent',
+                    content: '',
+                    metadata: { type: isThinking ? 'thinking' : 'done', steps: [] },
+                    createdAt: turn.user.createdAt,
+                  }}
                   isThinking={isThinking}
                   threadId={threadId}
+                  notifications={turn.notifications.map(m => ({
+                    content: m.content,
+                    type: (m.metadata?.type as string) ?? 'info',
+                    createdAt: m.createdAt,
+                  }))}
                 />
               )}
-
-              {/* Inline notification chips from send_notification */}
-              {turn.notifications.map(m => (
-                <NotificationChip key={m.id} message={m} />
-              ))}
 
               {/* Final agent response */}
               {turn.responses.map(msg => (

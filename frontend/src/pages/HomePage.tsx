@@ -14,6 +14,7 @@ export default function HomePage() {
     try {
       const threadRes = await api.post<{ id: string; title: string }>('/threads', {
         title: message.slice(0, 80),
+        initialMessage: message,
       });
       const threadId = threadRes.data.id;
       await api.post(`/threads/${threadId}/messages`, { content: message });
@@ -26,17 +27,15 @@ export default function HomePage() {
   };
 
   return (
-    /* staging-dim-background — page bg (--background) is slightly off-white,
-       making the white Surface input card visually elevated */
-    <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6 py-12 overflow-hidden">
-      <h1
-        className="text-[28px] font-semibold text-center text-[#2a2a2a]"
-        style={{ textWrap: 'balance', letterSpacing: '-0.01em' }}
-      >
-        Hey, nice to see you. What's new?
-      </h1>
-
-      <div className="w-full max-w-2xl flex flex-col gap-6">
+    // ux-proximity-grouping — heading and input share one tight group
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 overflow-hidden">
+      <div className="w-full max-w-2xl flex flex-col gap-4">
+        <h1
+          className="text-[26px] font-semibold text-center text-[#1a1a1a]"
+          style={{ textWrap: 'balance', letterSpacing: '-0.02em' }}
+        >
+          Hey, what can I do for you?
+        </h1>
         <ChatInput
           onSend={handleSend}
           disabled={sending}

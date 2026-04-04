@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Button } from '@heroui/react';
-import { ArrowUp, Plus, ChevronDown, Loader2 } from 'lucide-react';
+import { ArrowUp, Plus, Loader2 } from 'lucide-react';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -37,14 +36,18 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
   const canSend = !!value.trim() && !disabled;
 
   return (
+    // visual-layered-shadows — four layers for realistic elevation
+    // visual-border-alpha-colors — semi-transparent border adapts to any bg
     <div
-      className="flex flex-col p-3 rounded-[28px] bg-white relative z-10"
+      className="flex flex-col px-3 pt-3 pb-2.5 rounded-[20px] bg-white relative z-10"
       style={{
+        border: '1px solid rgba(0,0,0,0.08)',
         boxShadow:
-          '0 0 0 1px rgba(0,0,0,0.04), ' +
-          '0 4px 12px rgba(0,0,0,0.03), ' +
-          '0 12px 32px rgba(0,0,0,0.04), ' +
-          '0 24px 64px rgba(0,0,0,0.04)',
+          '0 0 0 1px rgba(0,0,0,0.03),' +
+          '0 1px 3px rgba(0,0,0,0.04),' +
+          '0 4px 12px rgba(0,0,0,0.05),' +
+          '0 12px 32px rgba(0,0,0,0.04)',
+        transition: 'box-shadow 180ms ease-out, border-color 180ms ease-out',
       }}
     >
       <textarea
@@ -52,38 +55,41 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
         value={value}
         onChange={e => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder ?? "Message"}
+        placeholder={placeholder ?? 'Message'}
         rows={1}
         disabled={disabled}
         spellCheck={false}
-        className="flex-1 w-full resize-none bg-transparent outline-none text-[15px] leading-6 max-h-[200px] overflow-y-auto disabled:opacity-50 placeholder:text-[#999999] text-[#1a1a1a] px-2 pt-1 pb-6"
+        className="w-full resize-none bg-transparent outline-none text-[15px] leading-[1.6] max-h-[200px] overflow-y-auto disabled:opacity-50 placeholder:text-[#B0B0B0] text-[#111] px-1 pb-4"
       />
-      <div className="flex justify-between items-center px-1">
-        <div className="flex items-center gap-2">
-          <Button
-            isIconOnly
-            size="sm"
-            variant="outline"
-            className="rounded-full border-[#E5E5E5] w-8 h-8 min-w-8 bg-transparent"
-            aria-label="Add attachment"
-          >
-            <Plus size={16} className="text-[#333333]" strokeWidth={2.5} />
-          </Button>
-        </div>
-        <Button
-          isIconOnly
-          size="sm"
-          className={`rounded-full w-8 h-8 min-w-8 transition-colors ${value.trim() && !disabled ? 'bg-[#1a1a1a] text-white hover:bg-[#333]' : 'bg-[#EFEFEF] text-[#999]'}`}
-          isDisabled={!value.trim() || disabled}
-          onPress={handleSend}
-          aria-label="Send message"
+
+      <div className="flex items-center justify-between">
+        {/* ux-fitts-target-size — 36px min hit area */}
+        <button
+          type="button"
+          aria-label="Add attachment"
+          className="w-9 h-9 flex items-center justify-center rounded-full text-[#999] hover:text-[#555] hover:bg-[#F5F5F5] transition-colors"
         >
-          {disabled ? (
-            <Loader2 size={16} className="animate-spin text-[#999]" strokeWidth={2.5} />
-          ) : (
-            <ArrowUp size={16} strokeWidth={2.5} />
-          )}
-        </Button>
+          <Plus size={17} strokeWidth={2} />
+        </button>
+
+        {/* visual-button-shadow-anatomy — send button with elevation shadow */}
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={!canSend}
+          aria-label="Send message"
+          className={[
+            'w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-all duration-150',
+            canSend
+              ? 'bg-[#111] text-white shadow-[0_1px_2px_rgba(0,0,0,0.3),0_2px_8px_rgba(0,0,0,0.15)] active:scale-95 active:shadow-none'
+              : 'bg-[#F0F0F0] text-[#B8B8B8] cursor-not-allowed',
+          ].join(' ')}
+        >
+          {disabled
+            ? <Loader2 size={15} className="animate-spin" strokeWidth={2.5} />
+            : <ArrowUp size={15} strokeWidth={2.5} />
+          }
+        </button>
       </div>
     </div>
   );

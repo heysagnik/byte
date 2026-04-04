@@ -6,9 +6,14 @@ import * as db from '../services/db.service';
 import { resolveApproval, hasPendingApproval } from '../services/approval.service';
 import { addSSEClient } from '../services/sse.service';
 import { PersonalAgent } from '../agents/personal.agent';
+import { Groq } from 'groq-sdk';
+import { env } from '../config/env';
+
+const groq = env.GROQ_API_KEY ? new Groq({ apiKey: env.GROQ_API_KEY }) : null;
 
 const CreateThreadSchema = z.object({
   title: z.string().min(1).max(200).optional(),
+  initialMessage: z.string().optional(),
 });
 
 const SendMessageSchema = z.object({
@@ -31,7 +36,35 @@ export async function createThread(req: AuthRequest, res: Response): Promise<voi
   }
 
   const userId = req.user!.userId;
-  const title = parse.data.title ?? 'New conversation';
+  let title = parse.data.title ?? 'New conversation';
+
+  const initialMessage = parse.data.initialMessage;
+
+  if (initialMessage && groq) {
+    try {
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: 'system',
+            content: "You are an AI assistant that generates a concise, descriptive title for a conversation based on the user's first message. Return ONLY the title (maximum 6 words). Do not put it in quotes."
+          },
+          {
+            role: 'user',
+            content: initialMessage,
+          }
+        ],
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 15,
+        temperature: 0.5,
+      });
+      const generatedTitle = chatCompletion.choices[0]?.message?.content?.trim();
+      if (generatedTitle) {
+        title = generatedTitle.replace(/^["']|["']$/g, '');
+      }
+    } catch (err) {
+      console.error('[groq] Failed to generate title:', err);
+    }
+  }
 
   try {
     const thread = await db.createThread(userId, title);
@@ -89,6 +122,7 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
       } catch (err) {
         console.error(`[agent] Error in thread ${threadId}:`, err);
         const errMsg = err instanceof Error ? err.message : 'Agent encountered an error';
+        // Agent already marked the placeholder done and preserved its steps — just surface the error
         await db.insertMessage(threadId, 'system', `Error: ${errMsg}`, { type: 'error' });
       }
     })();

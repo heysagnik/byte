@@ -27,11 +27,14 @@ export function useThread(threadId: string | undefined) {
     try {
       const res = await api.get<{ messages: Message[] }>(`/threads/${threadId}/messages`);
       const fetched = res.data.messages;
-      // Merge with any messages already received via SSE while the fetch was in-flight.
-      // SSE messages take precedence (they are more up-to-date).
+      // Merge with any real messages already received via SSE while the fetch was in-flight.
+      // SSE messages take precedence (more up-to-date), but optimistic entries are always dropped
+      // so loadMessages is always a ground-truth reconciliation.
       setMessages(prev => {
         const byId = new Map(fetched.map(m => [m.id, m]));
-        for (const m of prev) byId.set(m.id, m);
+        for (const m of prev) {
+          if (!m.id.startsWith('optimistic-')) byId.set(m.id, m);
+        }
         return [...byId.values()].sort(
           (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
@@ -41,6 +44,32 @@ export function useThread(threadId: string | undefined) {
       setIsReady(false);
     }
   }, [threadId]);
+
+  const addOptimisticMessages = useCallback((userContent: string) => {
+    const now = Date.now();
+    const optimisticUser: Message = {
+      id: `optimistic-user-${now}`,
+      threadId: threadId ?? '',
+      role: 'user',
+      content: userContent,
+      metadata: {},
+      createdAt: new Date(now).toISOString(),
+    };
+    const optimisticAgent: Message = {
+      id: `optimistic-agent-${now + 1}`,
+      threadId: threadId ?? '',
+      role: 'agent',
+      content: '',
+      metadata: { type: 'thinking', steps: [] },
+      // +1ms ensures agent placeholder sorts after user message
+      createdAt: new Date(now + 1).toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticUser, optimisticAgent]);
+  }, [threadId]);
+
+  const removeOptimisticMessages = useCallback(() => {
+    setMessages(prev => prev.filter(m => !m.id.startsWith('optimistic-')));
+  }, []);
 
   useEffect(() => {
     if (!threadId) return;
@@ -55,7 +84,34 @@ export function useThread(threadId: string | undefined) {
 
     es.addEventListener('message:new', (e: MessageEvent) => {
       const msg: Message = JSON.parse(e.data);
-      setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, msg]);
+      setMessages(prev => {
+        // Exact ID already present — true duplicate, ignore
+        if (prev.find(m => m.id === msg.id)) return prev;
+
+        // Replace optimistic user message — content must match for safety with rapid sends
+        if (msg.role === 'user') {
+          const idx = prev.findIndex(
+            m => m.id.startsWith('optimistic-user') && m.content === msg.content
+          );
+          if (idx !== -1) {
+            const next = [...prev];
+            next[idx] = msg;
+            return next;
+          }
+        }
+
+        // Replace optimistic agent thinking placeholder
+        if (msg.role === 'agent' && (msg.metadata?.type as string) === 'thinking') {
+          const idx = prev.findIndex(m => m.id.startsWith('optimistic-agent'));
+          if (idx !== -1) {
+            const next = [...prev];
+            next[idx] = msg;
+            return next;
+          }
+        }
+
+        return [...prev, msg];
+      });
     });
 
     es.addEventListener('message:update', (e: MessageEvent) => {
@@ -92,5 +148,5 @@ export function useThread(threadId: string | undefined) {
     };
   }, [threadId, loadMessages]);
 
-  return { messages, isReady };
+  return { messages, isReady, addOptimisticMessages, removeOptimisticMessages };
 }

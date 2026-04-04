@@ -112,25 +112,56 @@ class ToolRegistry {
             try {
               const { User } = await import('../models/User.js');
               const user = await User.findById(ctx.userId).lean();
-              if (user?.email) {
+              if (user?.name) {
+                callerName = user.name;
+              } else if (user?.email) {
                 const prefix = user.email.split('@')[0] ?? '';
                 callerName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
               }
             } catch { /* non-fatal — MCP server falls back to CALLER_NAME env var */ }
           }
 
-          const enriched = {
+          const enriched: Record<string, unknown> = {
             ...args,
             ...(callerName ? { caller_name: callerName } : {}),
           };
-          const result = await client.callTool({ name: tool.name, arguments: enriched });
+
+          if (tool.name === 'make_phone_call') {
+            const recipient = String(enriched['recipient_name'] ?? 'contact');
+            const objective = String(enriched['objective'] ?? '').slice(0, 120);
+            await ctx.reportStep({
+              type: 'calling',
+              content: `Calling ${recipient}: ${objective}`,
+              timestamp: Date.now(),
+            });
+          }
+
+          // Phone calls poll for up to 12 minutes — override the MCP SDK default 60s timeout.
+          const callOptions = tool.name === 'make_phone_call'
+            ? { timeout: 13 * 60 * 1000 }
+            : undefined;
+          const result = await client.callTool({ name: tool.name, arguments: enriched }, undefined, callOptions);
+
           // MCP returns content blocks — extract text
           const content = result.content as Array<{ type: string; text?: string }>;
           const text = content
             .filter(c => c.type === 'text')
             .map(c => c.text ?? '')
             .join('\n');
-          return text || JSON.stringify(content);
+          const resultText = text || JSON.stringify(content);
+
+          if (tool.name === 'make_phone_call') {
+            // Extract AI-generated summary from the formatted call output
+            const summaryMatch = resultText.match(/📋 SUMMARY:\n([\s\S]*?)(?:\n\n|$)/);
+            const summary = summaryMatch?.[1]?.trim() ?? resultText.slice(0, 200);
+            await ctx.reportStep({
+              type: 'result',
+              content: summary,
+              timestamp: Date.now(),
+            });
+          }
+
+          return resultText;
         },
       });
 
