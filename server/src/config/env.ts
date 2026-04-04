@@ -8,7 +8,7 @@ const EnvSchema = z.object({
   MONGODB_URI: z.string().default('mongodb://localhost:27017/byte'),
 
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
-  GEMINI_MODEL: z.string().default('gemini-3-preview'),
+  GEMINI_MODEL: z.string().default('gemini-3-flash-preview'),
 
   TWILIO_ACCOUNT_SID: z.string().min(1, 'TWILIO_ACCOUNT_SID is required'),
   TWILIO_AUTH_TOKEN: z.string().min(1, 'TWILIO_AUTH_TOKEN is required'),

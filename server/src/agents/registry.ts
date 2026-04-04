@@ -105,8 +105,24 @@ class ToolRegistry {
           }],
         },
         async handle(args, ctx) {
-          // Inject caller context so MCP servers can identify the user
-          const enriched = { ...args, _userId: ctx.userId, _threadId: ctx.threadId };
+          // Only resolve caller_name for phone call tools — avoids a DB hit on every tool dispatch
+          const needsCallerName = tool.name === 'make_phone_call' && !args['caller_name'];
+          let callerName: string | undefined;
+          if (needsCallerName && ctx.userId) {
+            try {
+              const { User } = await import('../models/User.js');
+              const user = await User.findById(ctx.userId).lean();
+              if (user?.email) {
+                const prefix = user.email.split('@')[0] ?? '';
+                callerName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+              }
+            } catch { /* non-fatal — MCP server falls back to CALLER_NAME env var */ }
+          }
+
+          const enriched = {
+            ...args,
+            ...(callerName ? { caller_name: callerName } : {}),
+          };
           const result = await client.callTool({ name: tool.name, arguments: enriched });
           // MCP returns content blocks — extract text
           const content = result.content as Array<{ type: string; text?: string }>;

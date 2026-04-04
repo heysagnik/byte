@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { Button } from '@heroui/react';
-import { ArrowUp, Plus, ChevronDown } from 'lucide-react';
+import { ArrowUp, Plus, ChevronDown, Loader2 } from 'lucide-react';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -73,12 +73,16 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
         <Button
           isIconOnly
           size="sm"
-          className={`rounded-full w-8 h-8 min-w-8 transition-colors ${canSend ? 'bg-[#1a1a1a] text-white hover:bg-[#333]' : 'bg-[#333333] text-white'}`}
-          isDisabled={!canSend}
+          className={`rounded-full w-8 h-8 min-w-8 transition-colors ${value.trim() && !disabled ? 'bg-[#1a1a1a] text-white hover:bg-[#333]' : 'bg-[#EFEFEF] text-[#999]'}`}
+          isDisabled={!value.trim() || disabled}
           onPress={handleSend}
           aria-label="Send message"
         >
-          <ArrowUp size={16} strokeWidth={2.5} />
+          {disabled ? (
+            <Loader2 size={16} className="animate-spin text-[#999]" strokeWidth={2.5} />
+          ) : (
+            <ArrowUp size={16} strokeWidth={2.5} />
+          )}
         </Button>
       </div>
     </div>

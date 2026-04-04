@@ -33,3 +33,12 @@ button:active:not(:disabled),
   transform: scale(0.97);
   transition: transform 150ms ease-out; /* duration-press-hover */
 }
+
+/* physics-entrance-animation */
+@keyframes slideFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-step-in {
+  animation: slideFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -2,7 +2,7 @@ import http from 'http';
 import { execSync } from 'child_process';
 import mongoose from 'mongoose';
 import { createApp } from './app';
-import { registerMCPTools } from './agents/manifest';
+import { registerCoreTools, registerMCPTools } from './agents/manifest';
 import { env } from './config/env';
 
 function killPort(port: number): void {
@@ -28,8 +28,8 @@ async function start() {
   await mongoose.connect(env.MONGODB_URI);
   console.log('[db] Connected to MongoDB');
 
-  // Register MCP tool servers (phone call, and any future MCP tools)
-  await registerMCPTools();
+  // Core in-process tools — always registered, never fail startup
+  registerCoreTools();
 
   const app = createApp();
   const httpServer = http.createServer(app);
@@ -39,6 +39,11 @@ async function start() {
   const listen = (retries = 5) => {
     httpServer.listen(port, () => {
       console.log(`[server] byte API running on http://localhost:${port}`);
+
+      // MCP subprocesses registered after server is up — failure is non-fatal
+      registerMCPTools().catch(err =>
+        console.error('[server] MCP tools failed to register (non-fatal):', err.message)
+      );
     });
 
     httpServer.once('error', (err: NodeJS.ErrnoException) => {

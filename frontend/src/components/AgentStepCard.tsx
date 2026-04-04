@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { Button, Chip } from '@heroui/react';
-import { ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Button, Chip, Accordion } from '@heroui/react';
+import type { Selection } from '@heroui/react';
 import { api } from '../lib/api';
 
 interface AgentStep {
@@ -48,22 +48,17 @@ interface AgentStepCardProps {
 
 export default function AgentStepCard({ metadata, threadId, isRunning }: AgentStepCardProps) {
   const [approving, setApproving] = useState(false);
-  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const [expandedKeys, setExpandedKeys] = useState<Selection>(new Set(["steps"]));
 
   const isDone = isRunning === undefined
     ? (metadata.type === 'done' || metadata.type === 'final')
     : !isRunning;
 
-  // Imperatively drive open/close so it works regardless of user interaction.
-  // React's `open` prop on <details> only sets the initial state; it doesn't
-  // re-control the element after the browser toggles it.
   useEffect(() => {
-    const el = detailsRef.current;
-    if (!el) return;
     if (!isDone) {
-      el.open = true;   // running → force open so new steps are visible
+      setExpandedKeys(new Set(["steps"]));
     } else {
-      el.open = false;  // done → collapse to summary
+      setExpandedKeys(new Set([]));
     }
   }, [isDone]);
 
@@ -82,61 +77,74 @@ export default function AgentStepCard({ metadata, threadId, isRunning }: AgentSt
 
   return (
     <div className="space-y-3">
-      {/* ux-progressive-disclosure — steps collapsed, native <details> = no extra styling */}
-      {metadata.steps && metadata.steps.length > 0 && (
-        <details className="group" ref={detailsRef}>
-          <summary className="flex items-center gap-1 text-xs text-[--muted] cursor-pointer select-none list-none w-fit">
-            <ChevronRight
-              size={12}
-              className="transition-transform duration-150 group-open:rotate-90"
-              aria-hidden="true"
-            />
-            {isDone
-              ? `${metadata.steps.length} step${metadata.steps.length !== 1 ? 's' : ''}`
-              : 'Working…'}
-          </summary>
+      <Accordion
+        className="px-0"
+        expandedKeys={expandedKeys}
+        onExpandedChange={setExpandedKeys}
+      >
+        <Accordion.Item key="steps" id="steps">
+          <Accordion.Heading>
+            <Accordion.Trigger className="text-xs font-medium text-[#666] py-2 px-1 rounded-md hover:bg-black/5 outline-none focus-visible:ring-2 focus-visible:ring-black">
+              {isDone 
+                ? `${metadata.steps?.length || 0} step${metadata.steps?.length !== 1 ? 's' : ''}` 
+                : (metadata.type === 'waiting_approval' ? 'Waiting for Approval…' : 'Working…')}
+            </Accordion.Trigger>
+          </Accordion.Heading>
+          <Accordion.Panel>
+            <Accordion.Body className="pb-2">
+              {metadata.steps && metadata.steps.length > 0 && (
+                <div className="mt-1 ml-1.5 pl-4 grid gap-y-2.5 gap-x-3 items-start" style={{ gridTemplateColumns: 'min-content 1fr', borderLeft: '2px solid #EBEBEB' }}>
+                  {metadata.steps.map((step, i) => {
+                    const showChip = i === 0 || metadata.steps![i - 1].type !== step.type;
+                    return (
+                      <div key={i} className="contents">
+                        <div className="pt-[1px] animate-step-in">
+                          {showChip && (
+                            <Chip size="sm" color={stepColor[step.type] ?? 'default'} variant="soft" className="h-[22px] px-1 text-[11.5px] font-medium">
+                              {stepLabel[step.type] ?? step.type}
+                            </Chip>
+                          )}
+                        </div>
+                        <div className={`text-[13.5px] leading-[1.6] animate-step-in ${showChip ? 'text-[#333] pt-[3px]' : 'text-[#666]'}`}>
+                          {step.content}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-          <div className="mt-2 ml-1 pl-3 space-y-1.5" style={{ borderLeft: '2px solid var(--border)' }}>
-            {metadata.steps.map((step, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs">
-                <Chip size="sm" color={stepColor[step.type] ?? 'default'} variant="soft" className="shrink-0">
-                  {stepLabel[step.type] ?? step.type}
-                </Chip>
-                <span className="text-[--muted] leading-5 pt-0.5">{step.content}</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-
-      {/* ux-von-restorff-emphasis — approval card visually distinct */}
-      {metadata.type === 'waiting_approval' && metadata.options && (
-        <div
-          className="rounded-lg p-4 space-y-2"
-          style={{ border: '1px solid rgba(245,158,11,0.25)', backgroundColor: 'rgba(245,158,11,0.04)' }}
-        >
-          <p className="text-sm font-medium">Choose an option to continue:</p>
-          {metadata.options.map((option, i) => (
-            <Button
-              key={i}
-              variant="secondary"
-              fullWidth
-              isDisabled={approving}
-              onPress={() => handleApprove(i)}
-              className="justify-between h-auto py-3 px-4 rounded-md"
-            >
-              <span className="font-medium text-sm">
-                {option.recommended && <span className="text-warning mr-1">★</span>}
-                {option.label}
-              </span>
-              <span className="flex flex-col items-end gap-0.5">
-                {option.price && <span className="text-sm tabular-nums text-[--muted]">{option.price}</span>}
-                {option.details && <span className="text-xs text-[--muted] font-normal">{option.details}</span>}
-              </span>
-            </Button>
-          ))}
-        </div>
-      )}
+              {metadata.type === 'waiting_approval' && metadata.options && (
+                <div
+                  className="rounded-lg p-4 space-y-2 mt-4"
+                  style={{ border: '1px solid rgba(245,158,11,0.25)', backgroundColor: 'rgba(245,158,11,0.04)' }}
+                >
+                  <p className="text-sm font-medium text-[#1a1a1a]">Choose an option to continue:</p>
+                  {metadata.options.map((option, i) => (
+                    <Button
+                      key={i}
+                      variant="outline"
+                      fullWidth
+                      isDisabled={approving}
+                      onPress={() => handleApprove(i)}
+                      className="justify-between h-auto py-3 px-4 rounded-md border border-[#EBEBEB] bg-white hover:bg-gray-50"
+                    >
+                      <span className="font-medium text-[13.5px] text-[#1a1a1a] flex items-center gap-2">
+                        {option.recommended && <span className="text-warning">★</span>}
+                        {option.label}
+                      </span>
+                      <span className="flex flex-col items-end gap-0.5 text-right">
+                        {option.price && <span className="text-sm tabular-nums text-[#666]">{option.price}</span>}
+                        {option.details && <span className="text-[12px] text-[#999] font-normal leading-tight">{option.details}</span>}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </Accordion.Body>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
     </div>
   );
 }

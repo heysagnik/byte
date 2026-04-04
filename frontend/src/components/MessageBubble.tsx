@@ -10,59 +10,54 @@ interface MessageBubbleProps {
 function parseBold(line: string) {
   return line.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
     p.startsWith('**') && p.endsWith('**')
-      ? <strong key={j}>{p.slice(2, -2)}</strong>
+      ? <strong key={j} className="font-semibold text-[#1a1a1a]">{p.slice(2, -2)}</strong>
       : <span key={j}>{p}</span>
   );
 }
 
-function RenderText({ text }: { text: string }) {
+function RenderText({ text, isUser }: { text: string; isUser?: boolean }) {
   return (
     <span translate="no" spellCheck={false} className="block" style={{ WebkitTextFillColor: 'inherit' }}>
       {text.split('\n').map((line, i) => {
-        if (line === '') return <div key={i} className="h-2" />;
+        if (line === '') return <div key={i} className="h-[0.5em]" />;
         if (/^\*\s/.test(line)) {
           return (
-            <div key={i} className="flex items-start gap-2 my-0.5">
-              <span className="mt-2 w-1.5 h-1.5 rounded-full bg-current shrink-0 opacity-40" />
+            <div key={i} className="flex items-start gap-2 my-1">
+              <span className={`mt-[0.6rem] w-[5px] h-[5px] rounded-full shrink-0 ${isUser ? 'bg-[#1a1a1a]' : 'bg-[#666]'}`} />
               <span>{parseBold(line.slice(2))}</span>
             </div>
           );
         }
-        return <p key={i} className="my-0.5">{parseBold(line)}</p>;
+        return <p key={i} className="my-1">{parseBold(line)}</p>;
       })}
     </span>
   );
 }
 
 export default function MessageBubble({ message, threadId, isThinking }: MessageBubbleProps) {
-  // ── User message ──────────────────────────────────────────────────────────
   if (message.role === 'user') {
     return (
-      <div className="flex justify-end py-1">
+      <div className="flex justify-end py-2">
         <div
-          className="max-w-[65%] rounded-lg px-4 py-2.5 text-sm leading-relaxed"
-          style={{ backgroundColor: 'var(--surface-secondary)', boxShadow: '0 0 0 1px var(--border)' }}
+          className="max-w-[75%] rounded-[20px] px-5 py-3 text-[15px] leading-[1.6]"
+          style={{ backgroundColor: '#F3F3F3', color: '#1a1a1a' }}
         >
-          <RenderText text={message.content} />
+          <RenderText text={message.content} isUser />
         </div>
       </div>
     );
   }
 
-  // ── Agent message ─────────────────────────────────────────────────────────
-  // Always show AgentStepCard (it handles its own null guard when no steps exist).
-  // isThinking controls whether the card shows "Working…" expanded or collapsed summary.
-  // The spinner is gone — steps stream in live as the agent runs.
   return (
-    <div className="py-1 pl-2">
-      <div className="min-w-0 py-1 space-y-2">
+    <div className="py-2 pl-2">
+      <div className="min-w-0 py-1 space-y-3">
         <AgentStepCard
           metadata={message.metadata as Parameters<typeof AgentStepCard>[0]['metadata']}
           threadId={threadId}
           isRunning={isThinking}
         />
         {message.content && (
-          <div className="text-sm leading-relaxed">
+          <div className="text-[15.5px] leading-[1.75] text-[#222]">
             <RenderText text={message.content} />
           </div>
         )}
