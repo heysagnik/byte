@@ -1,13 +1,3 @@
-import { io, Socket } from 'socket.io-client';
-
-let socket: Socket | null = null;
-
-export function getSocket(): Socket {
-  if (!socket) {
-    socket = io('http://localhost:3001', {
-      autoConnect: true,
-      withCredentials: true,
-    });
-  }
-  return socket;
-}
+// This file is intentionally empty.
+// Real-time updates are now delivered via Server-Sent Events (SSE).
+// See frontend/src/hooks/useThread.ts for the EventSource implementation.

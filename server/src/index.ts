@@ -1,42 +1,60 @@
 import http from 'http';
+import { execSync } from 'child_process';
 import mongoose from 'mongoose';
-import { Server as SocketIOServer } from 'socket.io';
 import { createApp } from './app';
+import { registerMCPTools } from './agents/manifest';
 import { env } from './config/env';
-import { initIO } from './services/socket.service';
+
+function killPort(port: number): void {
+  try {
+    if (process.platform === 'win32') {
+      const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, { encoding: 'utf8' });
+      const pid = result.trim().split(/\s+/).pop();
+      if (pid && pid !== '0') {
+        execSync(`taskkill /PID ${pid} /F`, { stdio: 'ignore' });
+        console.log(`[server] Killed process ${pid} holding port ${port}`);
+      }
+    } else {
+      execSync(`lsof -ti tcp:${port} | xargs kill -9`, { stdio: 'ignore' });
+      console.log(`[server] Killed process holding port ${port}`);
+    }
+  } catch {
+    // nothing was holding the port
+  }
+}
 
 async function start() {
   // Connect to MongoDB
   await mongoose.connect(env.MONGODB_URI);
   console.log('[db] Connected to MongoDB');
 
+  // Register MCP tool servers (phone call, and any future MCP tools)
+  await registerMCPTools();
+
   const app = createApp();
   const httpServer = http.createServer(app);
 
-  // Attach Socket.IO
-  const io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-      credentials: true,
-    },
-  });
-
-  initIO(io);
-
-  // Clients join a room per thread so we can target updates
-  io.on('connection', (socket) => {
-    socket.on('join:thread', (threadId: string) => {
-      socket.join(`thread:${threadId}`);
-    });
-    socket.on('leave:thread', (threadId: string) => {
-      socket.leave(`thread:${threadId}`);
-    });
-  });
-
   const port = parseInt(env.PORT, 10);
-  httpServer.listen(port, () => {
-    console.log(`[server] byte API running on http://localhost:${port}`);
-  });
+
+  const listen = (retries = 5) => {
+    httpServer.listen(port, () => {
+      console.log(`[server] byte API running on http://localhost:${port}`);
+    });
+
+    httpServer.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE' && retries > 0) {
+        console.warn(`[server] Port ${port} in use — killing occupying process...`);
+        killPort(port);
+        httpServer.closeAllConnections?.();
+        httpServer.close(() => setTimeout(() => listen(retries - 1), 500));
+      } else {
+        console.error('[server] HTTP server error:', err);
+        process.exit(1);
+      }
+    });
+  };
+
+  listen();
 }
 
 start().catch((err) => {

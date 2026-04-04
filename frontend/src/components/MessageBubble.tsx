@@ -1,11 +1,10 @@
-import { Spinner, Avatar } from '@heroui/react';
 import AgentStepCard from './AgentStepCard';
 import type { Message } from '../hooks/useThread';
 
 interface MessageBubbleProps {
-  message?: Message;
-  messages?: Message[];
+  message: Message;
   threadId: string;
+  isThinking?: boolean;
 }
 
 function parseBold(line: string) {
@@ -18,7 +17,6 @@ function parseBold(line: string) {
 
 function RenderText({ text }: { text: string }) {
   return (
-    // translate="no" + spellCheck=false kills browser grammar/translation coloring
     <span translate="no" spellCheck={false} className="block" style={{ WebkitTextFillColor: 'inherit' }}>
       {text.split('\n').map((line, i) => {
         if (line === '') return <div key={i} className="h-2" />;
@@ -36,9 +34,9 @@ function RenderText({ text }: { text: string }) {
   );
 }
 
-export default function MessageBubble({ message, messages, threadId }: MessageBubbleProps) {
-  // ── User message ─────────────────────────────────────────────────────────
-  if (message && message.role === 'user') {
+export default function MessageBubble({ message, threadId, isThinking }: MessageBubbleProps) {
+  // ── User message ──────────────────────────────────────────────────────────
+  if (message.role === 'user') {
     return (
       <div className="flex justify-end py-1">
         <div
@@ -51,36 +49,22 @@ export default function MessageBubble({ message, messages, threadId }: MessageBu
     );
   }
 
-  // ── Agent group — one avatar, all messages stacked ────────────────────────
-  const agentMessages = messages ?? (message ? [message] : []);
-  const isThinking = agentMessages.length === 1 && !agentMessages[0].content && agentMessages[0].metadata?.['type'] === 'thinking';
-
+  // ── Agent message ─────────────────────────────────────────────────────────
+  // Always show AgentStepCard (it handles its own null guard when no steps exist).
+  // isThinking controls whether the card shows "Working…" expanded or collapsed summary.
+  // The spinner is gone — steps stream in live as the agent runs.
   return (
-    <div className="flex gap-3 py-3">
-      <Avatar size="sm" color="default" className="shrink-0 mt-0.5" aria-hidden="true">
-        <Avatar.Fallback className="text-xs font-semibold" style={{ letterSpacing: '0.05em' }}>B</Avatar.Fallback>
-      </Avatar>
-
-      <div className="flex-1 min-w-0 space-y-3 py-3">
-        {isThinking ? (
-          <div className="flex items-center gap-2 text-sm text-[--muted]">
-            <Spinner size="sm" />
-            <span>Thinking…</span>
+    <div className="py-1 pl-2">
+      <div className="min-w-0 py-1 space-y-2">
+        <AgentStepCard
+          metadata={message.metadata as Parameters<typeof AgentStepCard>[0]['metadata']}
+          threadId={threadId}
+          isRunning={isThinking}
+        />
+        {message.content && (
+          <div className="text-sm leading-relaxed">
+            <RenderText text={message.content} />
           </div>
-        ) : (
-          agentMessages.map((msg) => (
-            <div key={msg.id} className="space-y-2">
-              <AgentStepCard
-                metadata={msg.metadata as Parameters<typeof AgentStepCard>[0]['metadata']}
-                threadId={threadId}
-              />
-              {msg.content && (
-                <div className="text-sm leading-relaxed">
-                  <RenderText text={msg.content} />
-                </div>
-              )}
-            </div>
-          ))
         )}
       </div>
     </div>

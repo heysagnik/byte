@@ -1,4 +1,3 @@
-import { Header, Separator } from '@heroui/react';
 import { useThreadList } from '../hooks/useThreadList';
 
 interface ChatHeaderProps {
@@ -11,10 +10,10 @@ export default function ChatHeader({ threadId }: ChatHeaderProps) {
 
   return (
     <>
-      <Header className="shrink-0 flex items-center px-6 py-3 min-h-[50px]">
-        <p className="text-sm font-medium truncate text-[--muted]">{title}</p>
-      </Header>
-      <Separator />
+      <div className="shrink-0 flex items-center pl-14 pr-6 h-[60px]">
+        <p className="text-[14px] font-medium truncate text-[#444]">{title}</p>
+      </div>
+      <div className="border-b border-[#EBEBEB]" />
     </>
   );
 }

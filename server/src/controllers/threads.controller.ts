@@ -4,7 +4,8 @@ import { Types } from 'mongoose';
 import { AuthRequest } from '../middleware/auth.middleware';
 import * as db from '../services/db.service';
 import { resolveApproval, hasPendingApproval } from '../services/approval.service';
-import { OrchestratorAgent } from '../agents/orchestrator.agent';
+import { addSSEClient } from '../services/sse.service';
+import { PersonalAgent } from '../agents/personal.agent';
 
 const CreateThreadSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -78,13 +79,15 @@ export async function sendMessage(req: AuthRequest, res: Response): Promise<void
     });
     const agentMessageId = agentMsg._id.toString();
 
-    // Fire orchestrator in background
+    const userId = req.user!.userId;
+
+    // Fire personal agent in background
     void (async () => {
-      const orchestrator = new OrchestratorAgent(threadId, agentMessageId);
+      const agent = new PersonalAgent(threadId, agentMessageId, userId);
       try {
-        await orchestrator.run(content);
+        await agent.run(content);
       } catch (err) {
-        console.error(`[orchestrator] Error in thread ${threadId}:`, err);
+        console.error(`[agent] Error in thread ${threadId}:`, err);
         const errMsg = err instanceof Error ? err.message : 'Agent encountered an error';
         await db.insertMessage(threadId, 'system', `Error: ${errMsg}`, { type: 'error' });
       }
@@ -119,6 +122,26 @@ export async function approveOption(req: AuthRequest, res: Response): Promise<vo
   res.json({ status: 'approved', optionIndex: parse.data.optionIndex });
 }
 
+export async function deleteThread(req: AuthRequest, res: Response): Promise<void> {
+  const threadId = req.params['id'] as string;
+  if (!isValidObjectId(threadId)) {
+    res.status(400).json({ error: 'Invalid thread ID' });
+    return;
+  }
+  try {
+    const thread = await db.getThreadById(threadId);
+    if (!thread || thread.userId.toString() !== req.user!.userId) {
+      res.status(404).json({ error: 'Thread not found' });
+      return;
+    }
+    await db.deleteThread(threadId);
+    res.json({ status: 'deleted' });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to delete thread';
+    res.status(500).json({ error: message });
+  }
+}
+
 export async function getMessages(req: AuthRequest, res: Response): Promise<void> {
   const threadId = req.params['id'] as string;
   if (!isValidObjectId(threadId)) {
@@ -127,10 +150,53 @@ export async function getMessages(req: AuthRequest, res: Response): Promise<void
   }
 
   try {
+    const thread = await db.getThreadById(threadId);
+    if (!thread || thread.userId.toString() !== req.user!.userId) {
+      res.status(404).json({ error: 'Thread not found' });
+      return;
+    }
     const messages = await db.getMessagesByThread(threadId);
     res.json({ messages: messages.map(db.serializeMessage) });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch messages';
     res.status(500).json({ error: message });
   }
+}
+
+export async function streamThread(req: AuthRequest, res: Response): Promise<void> {
+  const threadId = req.params['id'] as string;
+  if (!isValidObjectId(threadId)) {
+    res.status(400).end();
+    return;
+  }
+
+  const thread = await db.getThreadById(threadId);
+  if (!thread || thread.userId.toString() !== req.user!.userId) {
+    res.status(404).end();
+    return;
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  res.write('event: connected\ndata: {}\n\n');
+
+  const cleanup = addSSEClient(threadId, res);
+
+  // Keep-alive ping every 25s to prevent proxy/browser timeouts
+  const ping = setInterval(() => {
+    try {
+      res.write(': ping\n\n');
+    } catch {
+      clearInterval(ping);
+    }
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    cleanup();
+  });
 }

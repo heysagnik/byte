@@ -1,9 +1,22 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Avatar, Button, ScrollShadow } from '@heroui/react';
-import { Plus, Search, PanelLeft, LogOut } from 'lucide-react';
+import { 
+  SquarePen, 
+  Library, 
+  CheckSquare, 
+  Compass, 
+  Image as ImageIcon, 
+  FlaskConical, 
+  PanelRight, 
+  User, 
+  LogOut, 
+  Trash2, 
+  PanelLeft
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThreadList } from '../hooks/useThreadList';
+import { api } from '../lib/api';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -14,14 +27,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { id: activeThreadId } = useParams<{ id: string }>();
   const { user, logout } = useAuthStore();
-  const { threads } = useThreadList();
-  const [search, setSearch] = useState('');
+  const { threads, refresh } = useThreadList();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (e: React.MouseEvent, threadId: string) => {
+    e.stopPropagation();
+    setDeletingId(threadId);
+    try {
+      await api.delete(`/threads/${threadId}`);
+      if (activeThreadId === threadId) navigate('/');
+      refresh();
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const username = user?.email?.split('@')[0] ?? '';
   const initials = username.slice(0, 2).toUpperCase() || '?';
-  const filtered = search.trim()
-    ? threads.filter(t => t.title.toLowerCase().includes(search.toLowerCase()))
-    : threads;
 
   return (
     <aside
@@ -30,75 +52,104 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
         transition: `transform 220ms ${isOpen ? 'ease-out' : 'ease-in'}`,
         width: '260px',
-        backgroundColor: 'var(--surface-secondary)',
-        borderRight: '1px solid var(--border)',
+        backgroundColor: '#FAF8F5',
+        borderRight: '1px solid #EBEBEB',
       }}
       className="fixed inset-y-0 left-0 z-30 flex flex-col"
     >
       {/* Logo */}
-      <div className="px-4 pt-4 pb-3 flex items-center justify-between shrink-0">
-        <span className="font-semibold text-sm">Byte</span>
-        <Button isIconOnly size="md" variant="ghost" onPress={onClose} aria-label="Close sidebar">
-          <PanelLeft size={16} />
-        </Button>
+      <div className="px-5 h-[60px] flex items-center justify-between shrink-0">
+        <span className="font-bold text-[17px] text-[#1a1a1a] tracking-tight">Byte</span>
+        <button onClick={onClose} className="text-[#666] hover:text-[#1a1a1a] transition-colors" aria-label="Close sidebar">
+          <PanelLeft size={20} strokeWidth={1.5} />
+        </button>
       </div>
 
-      {/* New Chat */}
-      <div className="px-3 pb-2 shrink-0">
-        <Button variant="primary" fullWidth size="sm" className="justify-start gap-2"
-          onPress={() => { navigate('/'); onClose(); }}>
-          <Plus size={15} /> New Chat
-        </Button>
-      </div>
+      <ScrollShadow className="flex-1 px-3" hideScrollBar>
+        <div className="flex flex-col gap-1 pb-4">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 font-normal text-[14px] text-[#1a1a1a] px-3 h-10 hover:bg-[#F2EFEA]" 
+            onPress={() => { navigate('/'); onClose(); }}
+          >
+            <SquarePen size={18} strokeWidth={1.5} /> New chat
+          </Button>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 font-normal text-[14px] text-[#1a1a1a] px-3 h-10 hover:bg-[#F2EFEA]"
+          >
+            <Library size={18} strokeWidth={1.5} /> Library
+          </Button>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 font-normal text-[14px] text-[#1a1a1a] px-3 h-10 hover:bg-[#F2EFEA]"
+          >
+            <CheckSquare size={18} strokeWidth={1.5} /> Tasks
+            <span className="ml-auto text-[9px] uppercase font-bold border border-[#ccc] text-[#555] px-1.5 py-0.5 rounded tracking-wide leading-none">
+              PREVIEW
+            </span>
+          </Button>
+        </div>
 
-      {/* Search */}
-      <div className="px-3 pb-3 flex items-center gap-2 shrink-0"
-        style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.5rem', margin: '0 12px 12px' }}>
-        <Search size={14} className="text-[--muted] shrink-0" />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search Chats"
-          className="flex-1 bg-transparent outline-none text-sm py-2 placeholder:text-[--muted]"
-          aria-label="Search chats"
-        />
-      </div>
+        <div className="mx-4 border-t border-[#EBEBEB] mb-4" />
 
-      {threads.length > 0 && (
-        <p className="px-4 pb-1 text-xs font-medium text-[--muted] shrink-0">Chats</p>
-      )}
-
-      <ScrollShadow className="flex-1 px-3 pb-2" hideScrollBar>
-        {filtered.length === 0 ? (
-          <p className="py-6 text-xs text-center text-[--muted]">{search ? 'No results' : 'No chats yet'}</p>
-        ) : (
-          <nav aria-label="Chat history" className="flex flex-col gap-0.5">
-            {filtered.map(t => (
-              <Button
-                key={t.id}
-                variant={t.id === activeThreadId ? 'secondary' : 'ghost'}
-                size="sm" fullWidth
-                onPress={() => { navigate(`/thread/${t.id}`); onClose(); }}
-                aria-current={t.id === activeThreadId ? 'page' : undefined}
-                className="justify-start font-normal"
-              >
-                <span className="truncate">{t.title || 'Untitled'}</span>
-              </Button>
+        {/* User's Chat History (Preserved Functionality) */}
+        {threads.length > 0 && (
+          <nav aria-label="Chat history" className="flex flex-col gap-1 pb-4">
+            <p className="px-3 text-[11px] font-semibold text-[#888] uppercase tracking-wider mb-1 mt-2">Recent</p>
+            {threads.map(t => (
+              <div key={t.id} className="group relative w-full flex items-center">
+                <Button
+                  variant="ghost"
+                  onPress={() => { navigate(`/thread/${t.id}`); onClose(); }}
+                  className={`flex-1 w-full justify-start font-normal text-[14px] text-[#444] px-3 h-10 pr-8 ${t.id === activeThreadId ? 'bg-[#F2EFEA]' : 'hover:bg-[#F2EFEA]'}`}
+                >
+                  <span className="truncate text-sm text-[#444]">{t.title || 'Untitled'}</span>
+                </Button>
+                <button
+                  onClick={e => handleDelete(e, t.id)}
+                  disabled={deletingId === t.id}
+                  aria-label="Delete chat"
+                  className="absolute right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 p-1 rounded text-[#999] hover:text-red-500 disabled:opacity-40"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
             ))}
           </nav>
         )}
       </ScrollShadow>
 
-      <div className="shrink-0 px-3 py-3 flex items-center gap-2.5"
-        style={{ borderTop: '1px solid var(--border)' }}>
-        <Avatar size="sm" color="default" aria-hidden="true">
-          <Avatar.Fallback className="text-xs font-semibold" style={{ letterSpacing: '0.05em' }}>{initials}</Avatar.Fallback>
-        </Avatar>
-        <p className="flex-1 text-sm font-medium truncate min-w-0">{username}</p>
-        <Button isIconOnly size="md" variant="ghost" aria-label="Sign out"
-          onPress={() => { logout(); navigate('/auth'); }}>
-          <LogOut size={15} />
-        </Button>
+      {/* Profile / Auth Footer */}
+      <div className="px-6 pb-6 pt-2 shrink-0 flex flex-col gap-3">
+        {!user ? (
+          <>
+            <p className="text-[13px] text-[#666] leading-relaxed pr-4">
+              Sign in to save our conversations.
+            </p>
+            <button 
+              className="flex items-center gap-3 mt-4 text-[14px] font-medium text-[#1a1a1a] hover:opacity-70 transition-opacity"
+              onClick={() => navigate('/auth')}
+            >
+              <User size={18} strokeWidth={1.5} /> Sign in
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center justify-between w-full mt-2">
+            <button 
+              className="flex items-center gap-3 font-medium text-[14px] text-[#1a1a1a] hover:opacity-70 transition-opacity truncate max-w-[180px]"
+              onClick={() => {}} 
+            >
+              <Avatar size="sm" color="default" className="w-[24px] h-[24px]" aria-hidden="true">
+                <Avatar.Fallback className="text-[10px] font-semibold">{initials}</Avatar.Fallback>
+              </Avatar>
+              <span className="truncate">{username}</span>
+            </button>
+            <button onClick={() => { logout(); navigate('/auth'); }} className="text-[#666] hover:text-[#1a1a1a]" aria-label="Sign out">
+              <LogOut size={16} strokeWidth={1.5} />
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

@@ -4,9 +4,8 @@
 /* ─── Base ────────────────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;
-  /* staging-dim-background — use HeroUI --background token (off-white) so
-     white Surface cards appear elevated above the page */
-  background-color: var(--background);
+  /* staging-dim-background — slightly creamy off-white so white Surface cards appear elevated */
+  background-color: #FAF8F5;
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
 

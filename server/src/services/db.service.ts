@@ -2,7 +2,7 @@ import { Types } from 'mongoose';
 import { User, IUser } from '../models/User';
 import { Thread, IThread } from '../models/Thread';
 import { Message, IMessage, MessageRole } from '../models/Message';
-import { getIO } from './socket.service';
+import { broadcastToThread } from './sse.service';
 
 // ─── User ────────────────────────────────────────────────────────────────────
 
@@ -43,8 +43,7 @@ export async function insertMessage(
     metadata,
   });
 
-  // Emit via Socket.IO so the frontend gets it instantly
-  getIO().to(`thread:${threadId}`).emit('message:new', serializeMessage(msg));
+  broadcastToThread(threadId, 'message:new', serializeMessage(msg));
 
   return msg;
 }
@@ -56,10 +55,10 @@ export async function updateMessageMetadata(
   const msg = await Message.findByIdAndUpdate(
     messageId,
     { $set: { metadata } },
-    { new: true }
+    { returnDocument: 'after' }
   );
   if (msg) {
-    getIO().to(`thread:${msg.threadId.toString()}`).emit('message:update', serializeMessage(msg));
+    broadcastToThread(msg.threadId.toString(), 'message:update', serializeMessage(msg));
   }
 }
 
@@ -70,14 +69,21 @@ export async function updateMessageContent(
 ): Promise<void> {
   const update: Record<string, unknown> = { content };
   if (metadata !== undefined) update.metadata = metadata;
-  const msg = await Message.findByIdAndUpdate(messageId, { $set: update }, { new: true });
+  const msg = await Message.findByIdAndUpdate(messageId, { $set: update }, { returnDocument: 'after' });
   if (msg) {
-    getIO().to(`thread:${msg.threadId.toString()}`).emit('message:update', serializeMessage(msg));
+    broadcastToThread(msg.threadId.toString(), 'message:update', serializeMessage(msg));
   }
 }
 
 export async function getMessagesByThread(threadId: string): Promise<IMessage[]> {
   return Message.find({ threadId: new Types.ObjectId(threadId) }).sort({ createdAt: 1 });
+}
+
+export async function deleteThread(threadId: string): Promise<void> {
+  await Promise.all([
+    Thread.findByIdAndDelete(threadId),
+    Message.deleteMany({ threadId: new Types.ObjectId(threadId) }),
+  ]);
 }
 
 export async function getLatestMessage(

@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect } from 'react';
+import { create } from 'zustand';
 import { api } from '../lib/api';
 
 export interface ThreadSummary {
@@ -7,18 +8,33 @@ export interface ThreadSummary {
   createdAt: string;
 }
 
-export function useThreadList() {
-  const [threads, setThreads] = useState<ThreadSummary[]>([]);
+interface ThreadStore {
+  threads: ThreadSummary[];
+  hasLoaded: boolean;
+  refresh: () => Promise<void>;
+}
 
-  const refresh = useCallback(() => {
-    api.get<{ threads: ThreadSummary[] }>('/threads').then(res => {
-      setThreads(res.data.threads);
-    });
-  }, []);
+export const useThreadStore = create<ThreadStore>((set) => ({
+  threads: [],
+  hasLoaded: false,
+  refresh: async () => {
+    try {
+      const res = await api.get<{ threads: ThreadSummary[] }>('/threads');
+      set({ threads: res.data.threads, hasLoaded: true });
+    } catch (err) {
+      console.error(err);
+    }
+  },
+}));
+
+export function useThreadList() {
+  const store = useThreadStore();
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (!store.hasLoaded) {
+      store.refresh();
+    }
+  }, [store.hasLoaded, store.refresh]);
 
-  return { threads, refresh };
+  return { threads: store.threads, refresh: store.refresh };
 }

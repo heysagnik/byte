@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button, Chip } from '@heroui/react';
 import { ChevronRight } from 'lucide-react';
 import { api } from '../lib/api';
@@ -43,10 +43,29 @@ const stepLabel: Record<string, string> = {
 interface AgentStepCardProps {
   metadata: Metadata;
   threadId: string;
+  isRunning?: boolean;
 }
 
-export default function AgentStepCard({ metadata, threadId }: AgentStepCardProps) {
+export default function AgentStepCard({ metadata, threadId, isRunning }: AgentStepCardProps) {
   const [approving, setApproving] = useState(false);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  const isDone = isRunning === undefined
+    ? (metadata.type === 'done' || metadata.type === 'final')
+    : !isRunning;
+
+  // Imperatively drive open/close so it works regardless of user interaction.
+  // React's `open` prop on <details> only sets the initial state; it doesn't
+  // re-control the element after the browser toggles it.
+  useEffect(() => {
+    const el = detailsRef.current;
+    if (!el) return;
+    if (!isDone) {
+      el.open = true;   // running → force open so new steps are visible
+    } else {
+      el.open = false;  // done → collapse to summary
+    }
+  }, [isDone]);
 
   if (!metadata.steps?.length && metadata.type !== 'waiting_approval') return null;
 
@@ -65,14 +84,16 @@ export default function AgentStepCard({ metadata, threadId }: AgentStepCardProps
     <div className="space-y-3">
       {/* ux-progressive-disclosure — steps collapsed, native <details> = no extra styling */}
       {metadata.steps && metadata.steps.length > 0 && (
-        <details className="group">
+        <details className="group" ref={detailsRef}>
           <summary className="flex items-center gap-1 text-xs text-[--muted] cursor-pointer select-none list-none w-fit">
             <ChevronRight
               size={12}
               className="transition-transform duration-150 group-open:rotate-90"
               aria-hidden="true"
             />
-            {metadata.steps.length} step{metadata.steps.length !== 1 ? 's' : ''}
+            {isDone
+              ? `${metadata.steps.length} step${metadata.steps.length !== 1 ? 's' : ''}`
+              : 'Working…'}
           </summary>
 
           <div className="mt-2 ml-1 pl-3 space-y-1.5" style={{ borderLeft: '2px solid var(--border)' }}>

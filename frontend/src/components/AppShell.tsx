@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Button } from '@heroui/react';
-import { Menu } from 'lucide-react';
+import { PanelLeft } from 'lucide-react';
 import Sidebar from './Sidebar';
 
 interface AppShellProps {
@@ -19,19 +18,16 @@ export default function AppShell({ children }: AppShellProps) {
           marginLeft: sidebarOpen ? '260px' : '0',
           transition: `margin-left 220ms ${sidebarOpen ? 'ease-out' : 'ease-in'}`,
         }}
-        className="h-full flex flex-col"
+        className="h-full flex flex-col bg-white"
       >
-        <Button
-          isIconOnly
-          size="md"
-          variant="ghost"
-          onPress={() => setSidebarOpen(v => !v)}
+        <button
+          onClick={() => setSidebarOpen(v => !v)}
           aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
           aria-expanded={sidebarOpen}
-          className={`absolute top-3 left-4 z-40 transition-opacity duration-150 ${sidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          className={`absolute z-40 top-0 left-5 h-[60px] flex items-center text-[#666] hover:text-[#1a1a1a] transition-opacity duration-150 ${sidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         >
-          <Menu size={18} />
-        </Button>
+          <PanelLeft size={20} strokeWidth={1.5} />
+        </button>
 
         {children}
       </div>

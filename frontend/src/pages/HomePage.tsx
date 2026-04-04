@@ -28,27 +28,20 @@ export default function HomePage() {
   return (
     /* staging-dim-background — page bg (--background) is slightly off-white,
        making the white Surface input card visually elevated */
-    <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 py-12 overflow-hidden">
-
-      {/* type-text-wrap-balance-headings + ux-proximity-grouping */}
+    <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6 py-12 overflow-hidden">
       <h1
-        className="text-4xl font-semibold text-center"
-        style={{ textWrap: 'balance', letterSpacing: '-0.02em' }}
+        className="text-[28px] font-semibold text-center text-[#2a2a2a]"
+        style={{ textWrap: 'balance', letterSpacing: '-0.01em' }}
       >
-        How can I help you today?
+        Hey, nice to see you. What's new?
       </h1>
 
-      {/* ux-proximity-grouping — input close to heading, hint text close to input */}
-      <div className="w-full max-w-2xl flex flex-col gap-2">
+      <div className="w-full max-w-2xl flex flex-col gap-6">
         <ChatInput
           onSend={handleSend}
           disabled={sending}
-          placeholder="What's on your mind?"
+          placeholder="Message"
         />
-        {/* ux-progressive-disclosure — subtle hint; doesn't compete with heading */}
-        <p className="text-xs text-center text-[--muted]">
-          Press <kbd className="font-mono">Ctrl+Enter</kbd> to send
-        </p>
       </div>
     </div>
   );
