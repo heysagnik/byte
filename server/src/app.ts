@@ -23,7 +23,11 @@ export function createApp() {
     }),
   );
 
-  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  const healthHandler = (_req: express.Request, res: express.Response) =>
+    res.json({ status: 'ok', uptime: process.uptime() });
+  app.get('/', healthHandler);
+  app.get('/health', healthHandler);
+
 
   app.use('/api/auth', authRoutes);
   app.use('/api/user', userRoutes);

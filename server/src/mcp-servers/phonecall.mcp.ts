@@ -22,9 +22,9 @@ const ELEVENLABS_AGENT_ID = process.env['ELEVENLABS_AGENT_ID'] ?? '';
 const ELEVENLABS_PHONE_NUMBER_ID = process.env['ELEVENLABS_PHONE_NUMBER_ID'] ?? '';
 const CALLER_NAME_DEFAULT = process.env['CALLER_NAME'] ?? 'your contact';
 
-if (!ELEVENLABS_API_KEY || !ELEVENLABS_AGENT_ID || !ELEVENLABS_PHONE_NUMBER_ID) {
-  console.error('[phonecall-mcp] Missing required env vars');
-  process.exit(1);
+const ELEVENLABS_CONFIGURED = !!(ELEVENLABS_API_KEY && ELEVENLABS_AGENT_ID && ELEVENLABS_PHONE_NUMBER_ID);
+if (!ELEVENLABS_CONFIGURED) {
+  console.error('[phonecall-mcp] Warning: Missing ElevenLabs env vars — phone calls disabled');
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -445,6 +445,14 @@ server.setRequestHandler(CallToolRequestSchema, async req => {
       content: [
         { type: 'text', text: 'Error: phone_number, recipient_name, and objective are required.' },
       ],
+      isError: true,
+    };
+  }
+
+  // ── Guard: env vars not configured ───────────────────────────────────────
+  if (!ELEVENLABS_CONFIGURED) {
+    return {
+      content: [{ type: 'text', text: 'Phone calls are not configured on this server (missing ElevenLabs credentials).' }],
       isError: true,
     };
   }
