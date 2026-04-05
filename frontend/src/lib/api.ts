@@ -1,9 +1,10 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_BASE ?? '/api',
   headers: { 'Content-Type': 'application/json' },
 });
+
 
 // Attach JWT on every request
 api.interceptors.request.use(config => {
