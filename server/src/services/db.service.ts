@@ -35,7 +35,7 @@ export async function insertMessage(
   role: MessageRole,
   content: string,
   metadata: Record<string, unknown> = {},
-  images?: IMessageImage[]
+  images?: IMessageImage[],
 ): Promise<IMessage> {
   const msg = await Message.create({
     threadId: new Types.ObjectId(threadId),
@@ -52,24 +52,21 @@ export async function insertMessage(
 
 export async function updateMessageMetadata(
   messageId: string,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
 ): Promise<void> {
   // Use sequential updates if seq is provided to prevent older fire-and-forget
   // reportStep updates from overwriting a later 'done' status.
   const query: Record<string, unknown> = { _id: new Types.ObjectId(messageId) };
   if (typeof metadata.seq === 'number') {
-    query.$or = [
-      { 'metadata.seq': { $lt: metadata.seq } },
-      { 'metadata.seq': { $exists: false } },
-    ];
+    query.$or = [{ 'metadata.seq': { $lt: metadata.seq } }, { 'metadata.seq': { $exists: false } }];
   }
 
   const msg = await Message.findOneAndUpdate(
     query,
     { $set: { metadata } },
-    { returnDocument: 'after' }
+    { returnDocument: 'after' },
   );
-  
+
   if (msg) {
     broadcastToThread(msg.threadId.toString(), 'message:update', serializeMessage(msg));
   }
@@ -78,11 +75,15 @@ export async function updateMessageMetadata(
 export async function updateMessageContent(
   messageId: string,
   content: string,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ): Promise<void> {
   const update: Record<string, unknown> = { content };
   if (metadata !== undefined) update.metadata = metadata;
-  const msg = await Message.findByIdAndUpdate(messageId, { $set: update }, { returnDocument: 'after' });
+  const msg = await Message.findByIdAndUpdate(
+    messageId,
+    { $set: update },
+    { returnDocument: 'after' },
+  );
   if (msg) {
     broadcastToThread(msg.threadId.toString(), 'message:update', serializeMessage(msg));
   }
@@ -101,7 +102,7 @@ export async function deleteThread(threadId: string): Promise<void> {
 
 export async function getLatestMessage(
   threadId: string,
-  role: MessageRole
+  role: MessageRole,
 ): Promise<IMessage | null> {
   return Message.findOne({ threadId: new Types.ObjectId(threadId), role }).sort({ createdAt: -1 });
 }

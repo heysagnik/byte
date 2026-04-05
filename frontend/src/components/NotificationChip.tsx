@@ -1,11 +1,11 @@
 import type { Message } from '../hooks/useThread';
 
 const styles: Record<string, { bar: string; text: string }> = {
-  info:            { bar: 'bg-[--muted]',        text: 'text-[--muted]' },
-  success:         { bar: 'bg-success-500',       text: 'text-success-600' },
-  error:           { bar: 'bg-danger-500',        text: 'text-danger-600' },
-  waiting:         { bar: 'bg-warning-400',       text: 'text-warning-600' },
-  waiting_approval:{ bar: 'bg-warning-400',       text: 'text-warning-600' },
+  info: { bar: 'bg-[--muted]', text: 'text-[--muted]' },
+  success: { bar: 'bg-success-500', text: 'text-success-600' },
+  error: { bar: 'bg-danger-500', text: 'text-danger-600' },
+  waiting: { bar: 'bg-warning-400', text: 'text-warning-600' },
+  waiting_approval: { bar: 'bg-warning-400', text: 'text-warning-600' },
 };
 
 export default function NotificationChip({ message }: { message: Message }) {

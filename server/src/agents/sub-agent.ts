@@ -59,7 +59,8 @@ export class SubAgent {
     const alwaysInclude = ['web_search', ...this.allowedToolNames];
 
     return registry.allTools().filter(tool => {
-      const decls = (tool as { functionDeclarations?: Array<{ name: string }> }).functionDeclarations;
+      const decls = (tool as { functionDeclarations?: Array<{ name: string }> })
+        .functionDeclarations;
       return decls?.some(d => alwaysInclude.includes(d.name));
     });
   }
@@ -73,7 +74,11 @@ export class SubAgent {
       this.allowedToolNames,
     );
 
-    const model = this.genAI.getGenerativeModel({ model: env.GEMINI_MODEL, tools, systemInstruction });
+    const model = this.genAI.getGenerativeModel({
+      model: env.GEMINI_MODEL,
+      tools,
+      systemInstruction,
+    });
     const chat = model.startChat({ history: [] });
 
     // Sub-agent starts fresh — no conversation history, just the task
@@ -101,7 +106,7 @@ export class SubAgent {
           const { name, args } = part.functionCall!;
           const result = await registry.dispatch(name, args as Record<string, unknown>, subCtx);
           return { functionResponse: { name, response: { result } } } as FunctionResponsePart;
-        })
+        }),
       );
 
       const results: FunctionResponsePart[] = settled.map((r, i) => {
@@ -115,7 +120,11 @@ export class SubAgent {
     }
 
     let text = '';
-    try { text = response.response.text(); } catch { /* no text part */ }
+    try {
+      text = response.response.text();
+    } catch {
+      /* no text part */
+    }
     return text || 'No result returned.';
   }
 }

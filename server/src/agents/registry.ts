@@ -50,7 +50,10 @@ class ToolRegistry {
   /** Dispatch a tool call by name */
   async dispatch(name: string, args: Record<string, unknown>, ctx: ToolContext): Promise<string> {
     const handler = this.handlers.get(name);
-    if (!handler) throw new Error(`Unknown tool: "${name}". Registered: ${[...this.handlers.keys()].join(', ')}`);
+    if (!handler)
+      throw new Error(
+        `Unknown tool: "${name}". Registered: ${[...this.handlers.keys()].join(', ')}`,
+      );
     return handler.handle(args, ctx);
   }
 
@@ -65,7 +68,8 @@ class ToolRegistry {
   async registerMCP(serverName: string, config: MCPServerConfig): Promise<() => void> {
     const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
     const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
-    const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
+    const { StreamableHTTPClientTransport } =
+      await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
     const { SchemaType } = await import('@google/generative-ai');
 
     const client = new Client({ name: 'byte', version: '1.0.0' }, { capabilities: {} });
@@ -97,12 +101,14 @@ class ToolRegistry {
 
       this.register(fullName, {
         tools: {
-          functionDeclarations: [{
-            name: fullName,
-            description: tool.description ?? `MCP tool: ${tool.name} from ${serverName}`,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parameters: geminiParams as any,
-          }],
+          functionDeclarations: [
+            {
+              name: fullName,
+              description: tool.description ?? `MCP tool: ${tool.name} from ${serverName}`,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              parameters: geminiParams as any,
+            },
+          ],
         },
         async handle(args, ctx) {
           // Only resolve caller_name for phone call tools — avoids a DB hit on every tool dispatch
@@ -118,7 +124,9 @@ class ToolRegistry {
                 const prefix = user.email.split('@')[0] ?? '';
                 callerName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
               }
-            } catch { /* non-fatal — MCP server falls back to CALLER_NAME env var */ }
+            } catch {
+              /* non-fatal — MCP server falls back to CALLER_NAME env var */
+            }
           }
 
           const enriched: Record<string, unknown> = {
@@ -137,10 +145,13 @@ class ToolRegistry {
           }
 
           // Phone calls poll for up to 12 minutes — override the MCP SDK default 60s timeout.
-          const callOptions = tool.name === 'make_phone_call'
-            ? { timeout: 13 * 60 * 1000 }
-            : undefined;
-          const result = await client.callTool({ name: tool.name, arguments: enriched }, undefined, callOptions);
+          const callOptions =
+            tool.name === 'make_phone_call' ? { timeout: 13 * 60 * 1000 } : undefined;
+          const result = await client.callTool(
+            { name: tool.name, arguments: enriched },
+            undefined,
+            callOptions,
+          );
 
           // MCP returns content blocks — extract text
           const content = result.content as Array<{ type: string; text?: string }>;
@@ -173,24 +184,30 @@ class ToolRegistry {
     return () => {
       registeredNames.forEach(n => this.unregister(n));
       client.close().catch(() => {});
-      console.log(`[registry] MCP server "${serverName}" disconnected, ${registeredNames.length} tools removed`);
+      console.log(
+        `[registry] MCP server "${serverName}" disconnected, ${registeredNames.length} tools removed`,
+      );
     };
   }
 }
 
 /** Best-effort conversion of MCP JSON Schema → Gemini Schema object */
-function mcpSchemaToGemini(schema: Record<string, unknown>, SchemaType: Record<string, string>): Record<string, unknown> {
+function mcpSchemaToGemini(
+  schema: Record<string, unknown>,
+  SchemaType: Record<string, string>,
+): Record<string, unknown> {
   if (!schema || schema.type !== 'object') {
     return { type: SchemaType['OBJECT'], properties: {} };
   }
 
-  const convertType = (t: string): string => ({
-    string: SchemaType['STRING'],
-    number: SchemaType['NUMBER'],
-    boolean: SchemaType['BOOLEAN'],
-    array: SchemaType['ARRAY'],
-    object: SchemaType['OBJECT'],
-  }[t] ?? SchemaType['STRING']);
+  const convertType = (t: string): string =>
+    ({
+      string: SchemaType['STRING'],
+      number: SchemaType['NUMBER'],
+      boolean: SchemaType['BOOLEAN'],
+      array: SchemaType['ARRAY'],
+      object: SchemaType['OBJECT'],
+    })[t] ?? SchemaType['STRING'];
 
   const convertProps = (props: Record<string, unknown>): Record<string, unknown> => {
     const out: Record<string, unknown> = {};

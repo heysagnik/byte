@@ -29,7 +29,11 @@ export default function HomePage() {
       const threadId = threadRes.data.id;
       await api.post(`/threads/${threadId}/messages`, {
         content: message,
-        images: images?.map(img => ({ dataUrl: img.dataUrl, mimeType: img.mimeType, name: img.name })),
+        images: images?.map(img => ({
+          dataUrl: img.dataUrl,
+          mimeType: img.mimeType,
+          name: img.name,
+        })),
       });
       refresh();
       navigate(`/thread/${threadId}`);
@@ -45,9 +49,11 @@ export default function HomePage() {
       style={{ background: 'var(--bg-page)' }}
     >
       <div className="w-full max-w-2xl flex flex-col items-center gap-8">
-
         {/* ── Greeting label — entrance: delay 0ms ────────────────── */}
-        <div className="flex items-center gap-2.5 animate-fade-up" style={{ animationDelay: '0ms' }}>
+        <div
+          className="flex items-center gap-2.5 animate-fade-up"
+          style={{ animationDelay: '0ms' }}
+        >
           <span
             className="text-[14px] tracking-[0.16em] uppercase"
             style={{ fontFamily: 'var(--font-dot)', color: 'var(--text-muted)' }}
@@ -89,7 +95,10 @@ export default function HomePage() {
         </div>
 
         {/* ── Suggestion chips — entrance: delay 200ms ────────────── */}
-        <div className="flex flex-wrap justify-center gap-2 animate-fade-up" style={{ animationDelay: '200ms' }}>
+        <div
+          className="flex flex-wrap justify-center gap-2 animate-fade-up"
+          style={{ animationDelay: '200ms' }}
+        >
           {SUGGESTIONS.map(s => (
             <button
               key={s}
@@ -115,7 +124,6 @@ export default function HomePage() {
             </button>
           ))}
         </div>
-
       </div>
     </div>
   );

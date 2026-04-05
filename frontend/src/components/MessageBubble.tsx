@@ -10,15 +10,24 @@ interface MessageBubbleProps {
 
 function parseBold(line: string) {
   return line.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
-    p.startsWith('**') && p.endsWith('**')
-      ? <strong key={j} className="font-semibold">{p.slice(2, -2)}</strong>
-      : <span key={j}>{p}</span>
+    p.startsWith('**') && p.endsWith('**') ? (
+      <strong key={j} className="font-semibold">
+        {p.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={j}>{p}</span>
+    ),
   );
 }
 
 function RenderText({ text }: { text: string }) {
   return (
-    <span translate="no" spellCheck={false} className="block" style={{ WebkitTextFillColor: 'inherit' }}>
+    <span
+      translate="no"
+      spellCheck={false}
+      className="block"
+      style={{ WebkitTextFillColor: 'inherit' }}
+    >
       {text.split('\n').map((line, i) => {
         if (line === '') return <div key={i} className="h-[0.4em]" />;
         if (/^\*\s/.test(line)) {
@@ -29,13 +38,22 @@ function RenderText({ text }: { text: string }) {
             </div>
           );
         }
-        return <p key={i} className="my-1">{parseBold(line)}</p>;
+        return (
+          <p key={i} className="my-1">
+            {parseBold(line)}
+          </p>
+        );
       })}
     </span>
   );
 }
 
-export default function MessageBubble({ message, threadId, isThinking, notifications }: MessageBubbleProps) {
+export default function MessageBubble({
+  message,
+  threadId,
+  isThinking,
+  notifications,
+}: MessageBubbleProps) {
   // ── User message ──────────────────────────────────────────────────────────
   if (message.role === 'user') {
     return (
@@ -79,9 +97,7 @@ export default function MessageBubble({ message, threadId, isThinking, notificat
 
   // ── Byte logo mark — shown inline before agent message content ────────────
   const ByteMark = () => (
-    <div
-      className="flex items-center gap-2 mb-2"
-    >
+    <div className="flex items-center gap-2 mb-2">
       <div
         className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
         style={{ background: '#E05C20' }}
@@ -93,7 +109,11 @@ export default function MessageBubble({ message, threadId, isThinking, notificat
       </div>
       <span
         className="text-[10px] uppercase tracking-widest"
-        style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+        style={{
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--text-muted)',
+          letterSpacing: '0.12em',
+        }}
       >
         BYTE
       </span>
@@ -116,8 +136,8 @@ export default function MessageBubble({ message, threadId, isThinking, notificat
             <div
               className="rounded-2xl px-4 py-3 text-[14px] leading-[1.7] inline-block max-w-full"
               style={{
-                background: 'var(--bg-elevated)',        /* #F7F6F4 */
-                border: '1px solid var(--border)',        /* #DDDBD8 */
+                background: 'var(--bg-elevated)' /* #F7F6F4 */,
+                border: '1px solid var(--border)' /* #DDDBD8 */,
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-body)',
               }}

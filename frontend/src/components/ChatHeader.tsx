@@ -21,7 +21,11 @@ export default function ChatHeader({ threadId }: ChatHeaderProps) {
       {/* Thread title — Space Mono, uppercase, small-tracked */}
       <p
         className="text-[11px] uppercase tracking-widest truncate max-w-[60%] leading-snug"
-        style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+        style={{
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--text-muted)',
+          letterSpacing: '0.12em',
+        }}
       >
         {title}
       </p>
@@ -50,4 +54,3 @@ export default function ChatHeader({ threadId }: ChatHeaderProps) {
     </div>
   );
 }
-

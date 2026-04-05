@@ -54,12 +54,13 @@ export async function createThread(req: AuthRequest, res: Response): Promise<voi
         messages: [
           {
             role: 'system',
-            content: "You are an AI assistant that generates a concise, descriptive title for a conversation based on the user's first message. Return ONLY the title (maximum 6 words). Do not put it in quotes."
+            content:
+              "You are an AI assistant that generates a concise, descriptive title for a conversation based on the user's first message. Return ONLY the title (maximum 6 words). Do not put it in quotes.",
           },
           {
             role: 'user',
             content: initialMessage,
-          }
+          },
         ],
         model: 'llama-3.3-70b-versatile',
         max_tokens: 15,

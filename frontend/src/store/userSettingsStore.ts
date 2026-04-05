@@ -1,16 +1,21 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
 
-interface UserSettingsState {
+interface UserSettings {
   name: string;
   pronouns: string;
   autoLocation: boolean;
   location: string;
+  timezone: string;
+  country: string;
+}
+
+interface UserSettingsState extends UserSettings {
   isLoading: boolean;
-  
+
   // Actions
   fetchSettings: () => Promise<void>;
-  updateSettings: (updates: Partial<{ name: string; pronouns: string; autoLocation: boolean; location: string }>) => Promise<void>;
+  updateSettings: (updates: Partial<UserSettings>) => Promise<void>;
 }
 
 export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
@@ -18,13 +23,22 @@ export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
   pronouns: '',
   autoLocation: false,
   location: '',
+  timezone: '',
+  country: '',
   isLoading: false,
 
   fetchSettings: async () => {
     set({ isLoading: true });
     try {
-      const { data } = await api.get('/user/settings');
-      set({ ...data });
+      const { data } = await api.get<UserSettings>('/user/settings');
+      set({
+        name: data.name,
+        pronouns: data.pronouns,
+        autoLocation: data.autoLocation,
+        location: data.location,
+        timezone: data.timezone,
+        country: data.country,
+      });
     } catch (err) {
       console.error('Failed to fetch user settings:', err);
     } finally {
@@ -32,37 +46,53 @@ export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
     }
   },
 
-  updateSettings: async (updates) => {
+  updateSettings: async updates => {
     // Optimistic update locally
-    set({ ...updates });
+    set(updates as Partial<UserSettingsState>);
 
-    // Handle autoLocation logic if it was just toggled ON
-    if (updates.autoLocation) {
+    // When autoLocation is toggled ON — let the server resolve the IP
+    if (updates.autoLocation === true) {
       try {
-        const response = await fetch('https://ipapi.co/json/');
-        const locationData = await response.json();
-        
-        if (locationData.city && locationData.region) {
-          const locationString = `${locationData.city}, ${locationData.region}`;
-          updates.location = locationString;
-          set({ location: locationString });
-        }
+        const { data } = await api.post<{ location: string; timezone: string; country: string }>(
+          '/user/settings',
+          { autoLocation: true },
+        );
+        // Save autoLocation flag first, then immediately resolve location
+        const geoRes = await api.post<{ location: string; timezone: string; country: string }>(
+          '/user/refresh-location',
+        );
+        set({
+          autoLocation: true,
+          location: geoRes.data.location,
+          timezone: geoRes.data.timezone,
+          country: geoRes.data.country,
+        });
+        return; // already persisted above
       } catch (err) {
-        console.warn('Failed to auto-detect location by IP:', err);
+        console.warn('Failed to refresh location from server:', err);
       }
-    } else if (updates.autoLocation === false) {
-      // Clear location if autoLocation is toggled OFF
-      updates.location = '';
-      set({ location: '' });
     }
 
-    // Persist to backend
+    // When autoLocation is toggled OFF — clear geo fields
+    if (updates.autoLocation === false) {
+      updates.location = '';
+      set({ location: '', timezone: '', country: '' });
+    }
+
+    // Persist remaining updates to backend
     try {
-      await api.put('/user/settings', updates);
+      const { data } = await api.put<UserSettings>('/user/settings', updates);
+      // Sync with server response
+      set({
+        name: data.name,
+        pronouns: data.pronouns,
+        autoLocation: data.autoLocation,
+        location: data.location,
+        timezone: data.timezone,
+        country: data.country,
+      });
     } catch (err) {
       console.error('Failed to update user settings:', err);
-      // We don't rollback optimistic updates currently to keep UI smooth,
-      // but in a production app we would handle errors and retries.
     }
-  }
+  },
 }));

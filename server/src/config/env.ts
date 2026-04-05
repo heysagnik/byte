@@ -31,9 +31,14 @@ function loadEnv(): Env {
     const missing = result.error.errors.map(e => `  ${e.path.join('.')}: ${e.message}`).join('\n');
     console.error(`[env] Missing or invalid environment variables:\n${missing}`);
   }
-  return (result.success
-    ? result.data
-    : EnvSchema.parse({ ...process.env, JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-change-me' })) as Env;
+  return (
+    result.success
+      ? result.data
+      : EnvSchema.parse({
+          ...process.env,
+          JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-change-me',
+        })
+  ) as Env;
 }
 
 export const env = loadEnv();

@@ -43,7 +43,7 @@ export function useThread(threadId: string | undefined) {
           if (!m.id.startsWith('optimistic-')) byId.set(m.id, m);
         }
         return [...byId.values()].sort(
-          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
       });
       setIsReady(true);
@@ -52,27 +52,30 @@ export function useThread(threadId: string | undefined) {
     }
   }, [threadId]);
 
-  const addOptimisticMessages = useCallback((userContent: string) => {
-    const now = Date.now();
-    const optimisticUser: Message = {
-      id: `optimistic-user-${now}`,
-      threadId: threadId ?? '',
-      role: 'user',
-      content: userContent,
-      metadata: {},
-      createdAt: new Date(now).toISOString(),
-    };
-    const optimisticAgent: Message = {
-      id: `optimistic-agent-${now + 1}`,
-      threadId: threadId ?? '',
-      role: 'agent',
-      content: '',
-      metadata: { type: 'thinking', steps: [] },
-      // +1ms ensures agent placeholder sorts after user message
-      createdAt: new Date(now + 1).toISOString(),
-    };
-    setMessages(prev => [...prev, optimisticUser, optimisticAgent]);
-  }, [threadId]);
+  const addOptimisticMessages = useCallback(
+    (userContent: string) => {
+      const now = Date.now();
+      const optimisticUser: Message = {
+        id: `optimistic-user-${now}`,
+        threadId: threadId ?? '',
+        role: 'user',
+        content: userContent,
+        metadata: {},
+        createdAt: new Date(now).toISOString(),
+      };
+      const optimisticAgent: Message = {
+        id: `optimistic-agent-${now + 1}`,
+        threadId: threadId ?? '',
+        role: 'agent',
+        content: '',
+        metadata: { type: 'thinking', steps: [] },
+        // +1ms ensures agent placeholder sorts after user message
+        createdAt: new Date(now + 1).toISOString(),
+      };
+      setMessages(prev => [...prev, optimisticUser, optimisticAgent]);
+    },
+    [threadId],
+  );
 
   const removeOptimisticMessages = useCallback(() => {
     setMessages(prev => prev.filter(m => !m.id.startsWith('optimistic-')));
@@ -98,7 +101,7 @@ export function useThread(threadId: string | undefined) {
         // Replace optimistic user message — content must match for safety with rapid sends
         if (msg.role === 'user') {
           const idx = prev.findIndex(
-            m => m.id.startsWith('optimistic-user') && m.content === msg.content
+            m => m.id.startsWith('optimistic-user') && m.content === msg.content,
           );
           if (idx !== -1) {
             const next = [...prev];
@@ -123,26 +126,31 @@ export function useThread(threadId: string | undefined) {
 
     es.addEventListener('message:update', (e: MessageEvent) => {
       const msg: Message = JSON.parse(e.data);
-      setMessages(prev => prev.map(m => m.id === msg.id ? msg : m));
+      setMessages(prev => prev.map(m => (m.id === msg.id ? msg : m)));
     });
 
     // step:new — append one step to the placeholder message immediately,
     // without waiting for the DB message:update round-trip.
     es.addEventListener('step:new', (e: MessageEvent) => {
-      const { agentMessageId, step } = JSON.parse(e.data) as { agentMessageId: string; step: AgentStep };
-      setMessages(prev => prev.map(m => {
-        if (m.id !== agentMessageId) return m;
-        const existing = (m.metadata.steps as AgentStep[] | undefined) ?? [];
-        // Deduplicate by timestamp in case message:update arrives later with same step
-        if (existing.some(s => s.timestamp === step.timestamp)) return m;
-        return {
-          ...m,
-          metadata: {
-            ...m.metadata,
-            steps: [...existing, step],
-          },
-        };
-      }));
+      const { agentMessageId, step } = JSON.parse(e.data) as {
+        agentMessageId: string;
+        step: AgentStep;
+      };
+      setMessages(prev =>
+        prev.map(m => {
+          if (m.id !== agentMessageId) return m;
+          const existing = (m.metadata.steps as AgentStep[] | undefined) ?? [];
+          // Deduplicate by timestamp in case message:update arrives later with same step
+          if (existing.some(s => s.timestamp === step.timestamp)) return m;
+          return {
+            ...m,
+            metadata: {
+              ...m.metadata,
+              steps: [...existing, step],
+            },
+          };
+        }),
+      );
     });
 
     es.addEventListener('connected', () => {

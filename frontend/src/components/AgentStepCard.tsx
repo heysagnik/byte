@@ -4,7 +4,15 @@ import type { Selection } from '@heroui/react';
 import { api } from '../lib/api';
 
 interface AgentStep {
-  type: 'thinking' | 'searching' | 'calling' | 'result' | 'waiting_approval' | 'error' | 'agent_spawn' | 'agent_done';
+  type:
+    | 'thinking'
+    | 'searching'
+    | 'calling'
+    | 'result'
+    | 'waiting_approval'
+    | 'error'
+    | 'agent_spawn'
+    | 'agent_done';
   content: string;
   timestamp: number;
   agentLabel?: string;
@@ -79,12 +87,16 @@ interface AgentStepCardProps {
   notifications?: NotificationMessage[];
 }
 
-export default function AgentStepCard({ metadata, threadId, isRunning, notifications = [] }: AgentStepCardProps) {
+export default function AgentStepCard({
+  metadata,
+  threadId,
+  isRunning,
+  notifications = [],
+}: AgentStepCardProps) {
   const [expandedKeys, setExpandedKeys] = useState<Selection>(new Set(['steps']));
 
-  const isDone = isRunning === undefined
-    ? (metadata.type === 'done' || metadata.type === 'final')
-    : !isRunning;
+  const isDone =
+    isRunning === undefined ? metadata.type === 'done' || metadata.type === 'final' : !isRunning;
 
   useEffect(() => {
     setExpandedKeys(isDone ? new Set([]) : new Set(['steps']));
@@ -93,7 +105,11 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
   // Merge steps + notifications into one chronological timeline
   const timeline: TimelineItem[] = [
     ...(metadata.steps ?? []).map(s => ({ kind: 'step' as const, data: s, time: s.timestamp })),
-    ...notifications.map(n => ({ kind: 'notification' as const, data: n, time: new Date(n.createdAt).getTime() })),
+    ...notifications.map(n => ({
+      kind: 'notification' as const,
+      data: n,
+      time: new Date(n.createdAt).getTime(),
+    })),
   ].sort((a, b) => a.time - b.time);
 
   if (timeline.length === 0 && metadata.type !== 'waiting_approval') return null;
@@ -112,20 +128,24 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
 
   return (
     <div className="space-y-2">
-      <Accordion
-        className="px-0"
-        expandedKeys={expandedKeys}
-        onExpandedChange={setExpandedKeys}
-      >
+      <Accordion className="px-0" expandedKeys={expandedKeys} onExpandedChange={setExpandedKeys}>
         <Accordion.Item key="steps" id="steps">
           <Accordion.Heading>
             <Accordion.Trigger
               className="py-1.5 px-2 rounded-lg outline-none transition-colors w-full flex items-center gap-2 w-max"
-              style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--text-muted)',
+                letterSpacing: '0.04em',
+              }}
             >
               {/* Pulsing dot while agent is active */}
               {!isDone && (
-                <span className="inline-block w-1.5 h-1.5 rounded-full shrink-0 animate-accent-ping" style={{ background: 'var(--accent)' }} />
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full shrink-0 animate-accent-ping"
+                  style={{ background: 'var(--accent)' }}
+                />
               )}
               {headerText}
             </Accordion.Trigger>
@@ -135,7 +155,10 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
               {timeline.length > 0 && (
                 <div
                   className="mt-1 ml-2 pl-3.5 grid gap-y-2.5 gap-x-3 items-start"
-                  style={{ gridTemplateColumns: 'max-content 1fr', borderLeft: '1px solid var(--border)' }}
+                  style={{
+                    gridTemplateColumns: 'max-content 1fr',
+                    borderLeft: '1px solid var(--border)',
+                  }}
                 >
                   {timeline.map((item, i) => {
                     const isLast = !isDone && i === timeline.length - 1;
@@ -143,7 +166,11 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                     if (item.kind === 'step') {
                       const step = item.data;
                       const prev = timeline[i - 1];
-                      const showChip = i === 0 || prev?.kind !== 'step' || prev.data.type !== step.type || prev.data.agentLabel !== step.agentLabel;
+                      const showChip =
+                        i === 0 ||
+                        prev?.kind !== 'step' ||
+                        prev.data.type !== step.type ||
+                        prev.data.agentLabel !== step.agentLabel;
                       const chipLabel = step.agentLabel
                         ? step.agentLabel
                         : (stepLabel[step.type] ?? step.type);
@@ -168,11 +195,18 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                           </div>
                           <div
                             className={`text-[13px] leading-[1.6] animate-step-in ${isLast ? 'font-medium' : ''}`}
-                            style={{ color: showChip ? 'var(--text-primary)' : 'var(--text-muted)', fontFamily: 'var(--font-body)', paddingTop: showChip ? '3px' : undefined }}
+                            style={{
+                              color: showChip ? 'var(--text-primary)' : 'var(--text-muted)',
+                              fontFamily: 'var(--font-body)',
+                              paddingTop: showChip ? '3px' : undefined,
+                            }}
                           >
                             {step.content}
                             {isLast && (
-                              <span className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse" style={{ background: 'var(--accent)' }} />
+                              <span
+                                className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse"
+                                style={{ background: 'var(--accent)' }}
+                              />
                             )}
                           </div>
                         </div>
@@ -190,7 +224,11 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                             size="sm"
                             variant="soft"
                             className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap ${isLast ? 'opacity-100' : 'opacity-50'}`}
-                            style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
+                            style={{
+                              background: 'var(--bg-surface)',
+                              color: 'var(--text-muted)',
+                              fontFamily: 'var(--font-mono)',
+                            }}
                           >
                             {label}
                           </Chip>
@@ -201,7 +239,10 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                         >
                           {notif.content}
                           {isLast && (
-                            <span className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse" style={{ background: 'var(--accent)' }} />
+                            <span
+                              className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse"
+                              style={{ background: 'var(--accent)' }}
+                            />
                           )}
                         </div>
                       </div>
@@ -209,7 +250,6 @@ export default function AgentStepCard({ metadata, threadId, isRunning, notificat
                   })}
                 </div>
               )}
-
             </Accordion.Body>
           </Accordion.Panel>
         </Accordion.Item>
@@ -281,7 +321,11 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
         />
         <span
           className="text-[10px] uppercase tracking-widest"
-          style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--text-muted)',
+            letterSpacing: '0.12em',
+          }}
         >
           {confirmed ? 'Confirmed' : 'Choose an option'}
         </span>
@@ -340,7 +384,13 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
                   >
                     {isSelected && (
                       <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                        <path d="M1.5 4L3.5 6L6.5 2" stroke="var(--text-primary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path
+                          d="M1.5 4L3.5 6L6.5 2"
+                          stroke="var(--text-primary)"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     )}
                   </span>

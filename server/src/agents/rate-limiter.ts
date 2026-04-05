@@ -75,7 +75,9 @@ async function withRetry<T>(fn: () => Promise<T>, attempt = 0, signal?: AbortSig
 
     // Exponential backoff: 15s, 30s, 60s, 120s
     const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
-    console.warn(`[rate-limiter] 429 received — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
+    console.warn(
+      `[rate-limiter] 429 received — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`,
+    );
     await sleep(delay);
     if (signal?.aborted) throw new Error('cancelled');
 
@@ -89,7 +91,9 @@ function isRateLimitError(err: unknown): boolean {
   if (!err || typeof err !== 'object') return false;
   const msg = String((err as { message?: string }).message ?? '').toLowerCase();
   const status = (err as { status?: number }).status;
-  return status === 429 || msg.includes('429') || msg.includes('rate limit') || msg.includes('quota');
+  return (
+    status === 429 || msg.includes('429') || msg.includes('rate limit') || msg.includes('quota')
+  );
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -107,7 +111,7 @@ class GeminiRateLimiter {
       if (signal?.aborted) return reject(new Error('cancelled'));
 
       const entry: QueueEntry<T> = { fn, resolve, reject, signal };
-      
+
       const onAbort = () => {
         const idx = queue.indexOf(entry);
         if (idx !== -1) queue.splice(idx, 1);

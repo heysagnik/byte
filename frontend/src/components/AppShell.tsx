@@ -9,13 +9,9 @@ export default function AppShell({ children }: AppShellProps) {
     <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-page)' }}>
       <Sidebar />
       {/* Content area */}
-      <div
-        className="flex-1 flex flex-col min-w-0"
-        style={{ background: 'var(--bg-page)' }}
-      >
+      <div className="flex-1 flex flex-col min-w-0" style={{ background: 'var(--bg-page)' }}>
         {children}
       </div>
     </div>
   );
 }
-

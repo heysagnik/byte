@@ -10,22 +10,23 @@
 
 ## 🌟 Key Features
 
-*   **🗣️ Voice Execution:** Dispatches AI agents to handle real-world phone calls (bookings, inquiries, negotiations) via Twilio and ElevenLabs.
-*   **🧠 Intelligent Orchestration:** Dynamically combines web search and task execution based on user intent.
-*   **🛡️ Social Interaction Buffer:** Intentionally handles anxiety-inducing, human-facing tasks (like calling customer service) to act as a buffer for introverted users or those facing social exhaustion.
-*   **🎯 Contextual Personalization:** Maintains a persistent memory that adapts to user preferences and past interactions for highly tailored execution.
+- **🗣️ Voice Execution:** Dispatches AI agents to handle real-world phone calls (bookings, inquiries, negotiations) via Twilio and ElevenLabs.
+- **🧠 Intelligent Orchestration:** Dynamically combines web search and task execution based on user intent.
+- **🛡️ Social Interaction Buffer:** Intentionally handles anxiety-inducing, human-facing tasks (like calling customer service) to act as a buffer for introverted users or those facing social exhaustion.
+- **🎯 Contextual Personalization:** Maintains a persistent memory that adapts to user preferences and past interactions for highly tailored execution.
 
 ---
 
 ## 🏗️ High-Level Architecture
-<img width="8192" height="3547" alt="final high arch (m)" src="https://github.com/user-attachments/assets/45bbbcee-d46f-44cd-985f-fed2f8c772c8" />
 
+<img width="8192" height="3547" alt="final high arch (m)" src="https://github.com/user-attachments/assets/45bbbcee-d46f-44cd-985f-fed2f8c772c8" />
 
 ---
 
 ## 📊 Feature Workflows
 
 ### 1. The Autonomous Orchestration Flow
+
 Byte breaks down complex prompts into step-by-step actions, orchestrating the right tools for the job.
 
 ```mermaid
@@ -41,10 +42,10 @@ graph TD
 ```
 
 ### 2. Social Friction Buffer: The Call Execution Pattern
+
 How Byte handles nerve-wracking phone calls on your behalf.
 
 <img width="7367" height="3315" alt="mermaideg" src="https://github.com/user-attachments/assets/fe4e01b9-b15d-4669-a17d-197eab32cd73" />
-
 
 ---
 
@@ -53,18 +54,20 @@ How Byte handles nerve-wracking phone calls on your behalf.
 **Frontend:** React 19, Vite, Tailwind CSS 4, HeroUI, Zustand  
 **Backend:** Node.js, Express, TypeScript, Zod  
 **AI/Voice Engine:** Google Gemini, Groq, ElevenLabs, Twilio  
-**Real-time & DB:** WebSockets (Socket.io), MongoDB + Mongoose  
+**Real-time & DB:** WebSockets (Socket.io), MongoDB + Mongoose
 
 ---
 
 ## 🚀 Setup & Installation
 
 ### Prerequisites
+
 - [Node.js](https://nodejs.org/en/) (v22+)
 - [MongoDB](https://www.mongodb.com/) (running locally or a connection string)
 - API Keys: Google Gemini, ElevenLabs, Twilio, Serper (Search API)
 
 ### 1. Clone & Install Dependencies
+
 From the root directory:
 
 ```bash
@@ -87,6 +90,7 @@ cp .env.example .env
 ```
 
 Your `.env` should look something like this:
+
 ```env
 PORT=3001
 JWT_SECRET=your_super_secret_jwt_key

@@ -15,7 +15,7 @@ export default function ThreadPage() {
 
   // Agent is running if the last agent message is still in thinking state
   const isRunning = messages.some(
-    m => m.role === 'agent' && (m.metadata?.type as string) === 'thinking'
+    m => m.role === 'agent' && (m.metadata?.type as string) === 'thinking',
   );
 
   const handleSend = async (message: string, images?: ImageAttachment[]) => {
@@ -24,7 +24,11 @@ export default function ThreadPage() {
     try {
       await api.post(`/threads/${id}/messages`, {
         content: message,
-        images: images?.map(img => ({ dataUrl: img.dataUrl, mimeType: img.mimeType, name: img.name })),
+        images: images?.map(img => ({
+          dataUrl: img.dataUrl,
+          mimeType: img.mimeType,
+          name: img.name,
+        })),
       });
     } catch (err) {
       console.error('Failed to send message:', err);
@@ -53,12 +57,21 @@ export default function ThreadPage() {
             {[80, 55, 70].map((w, i) => (
               <div key={i} className="flex flex-col gap-3">
                 <div className="flex justify-end">
-                  <div className="h-9 rounded-2xl animate-pulse" style={{ width: `${w}%`, background: 'var(--bg-surface)' }} />
+                  <div
+                    className="h-9 rounded-2xl animate-pulse"
+                    style={{ width: `${w}%`, background: 'var(--bg-surface)' }}
+                  />
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-1 space-y-2 pt-1">
-                    <div className="h-3 rounded animate-pulse" style={{ width: '90%', background: 'var(--bg-surface)' }} />
-                    <div className="h-3 rounded animate-pulse" style={{ width: '65%', background: 'var(--bg-surface)' }} />
+                    <div
+                      className="h-3 rounded animate-pulse"
+                      style={{ width: '90%', background: 'var(--bg-surface)' }}
+                    />
+                    <div
+                      className="h-3 rounded animate-pulse"
+                      style={{ width: '65%', background: 'var(--bg-surface)' }}
+                    />
                   </div>
                 </div>
               </div>
@@ -70,7 +83,12 @@ export default function ThreadPage() {
       )}
 
       <div className={`shrink-0 px-6 pb-5 pt-2 ${CONTENT_WIDTH} mx-auto w-full`}>
-        <ChatInput onSend={handleSend} onCancel={handleCancel} isRunning={isRunning} placeholder="Reply…" />
+        <ChatInput
+          onSend={handleSend}
+          onCancel={handleCancel}
+          isRunning={isRunning}
+          placeholder="Reply…"
+        />
       </div>
     </div>
   );

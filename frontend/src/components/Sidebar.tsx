@@ -47,7 +47,7 @@ export default function Sidebar() {
       {/* ── Logo header ────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 pt-5 pb-3 shrink-0">
         <div className="flex items-center">
-          {['B','Y','T','E'].map((letter) => {
+          {['B', 'Y', 'T', 'E'].map(letter => {
             const isT = letter === 'T';
             return (
               <span
@@ -132,7 +132,11 @@ export default function Sidebar() {
           <>
             <p
               className="px-2 pb-2 text-[10px] uppercase tracking-widest"
-              style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-hint)', letterSpacing: '0.12em' }}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--text-hint)',
+                letterSpacing: '0.12em',
+              }}
             >
               Recent
             </p>
@@ -149,14 +153,18 @@ export default function Sidebar() {
                     className="flex-1 min-w-0 flex items-center px-2.5 h-8 rounded-lg text-[13px] text-left transition-all duration-150"
                     style={{
                       background: t.id === activeThreadId ? 'var(--bg-elevated)' : 'transparent',
-                      border: t.id === activeThreadId ? '1px solid var(--border)' : '1px solid transparent',
+                      border:
+                        t.id === activeThreadId
+                          ? '1px solid var(--border)'
+                          : '1px solid transparent',
                       color: t.id === activeThreadId ? 'var(--text-primary)' : 'var(--text-muted)',
                       fontFamily: 'var(--font-body)',
                     }}
                     onMouseEnter={e => {
                       if (t.id !== activeThreadId) {
                         (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
-                        (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-elevated)';
+                        (e.currentTarget as HTMLButtonElement).style.background =
+                          'var(--bg-elevated)';
                       }
                     }}
                     onMouseLeave={e => {
@@ -185,7 +193,10 @@ export default function Sidebar() {
           </>
         )}
         {filtered.length === 0 && search && (
-          <p className="px-2 py-3 text-[12px]" style={{ color: 'var(--text-hint)', fontFamily: 'var(--font-body)' }}>
+          <p
+            className="px-2 py-3 text-[12px]"
+            style={{ color: 'var(--text-hint)', fontFamily: 'var(--font-body)' }}
+          >
             No results
           </p>
         )}

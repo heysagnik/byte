@@ -8,7 +8,9 @@ import { env } from './config/env';
 function killPort(port: number): void {
   try {
     if (process.platform === 'win32') {
-      const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, { encoding: 'utf8' });
+      const result = execSync(`netstat -ano | findstr :${port} | findstr LISTENING`, {
+        encoding: 'utf8',
+      });
       const pid = result.trim().split(/\s+/).pop();
       if (pid && pid !== '0') {
         execSync(`taskkill /PID ${pid} /F`, { stdio: 'ignore' });
@@ -42,7 +44,7 @@ async function start() {
 
       // MCP subprocesses registered after server is up — failure is non-fatal
       registerMCPTools().catch(err =>
-        console.error('[server] MCP tools failed to register (non-fatal):', err.message)
+        console.error('[server] MCP tools failed to register (non-fatal):', err.message),
       );
     });
 
@@ -62,7 +64,7 @@ async function start() {
   listen();
 }
 
-start().catch((err) => {
+start().catch(err => {
   console.error('[server] Fatal startup error:', err);
   process.exit(1);
 });

@@ -2,8 +2,8 @@ import { useRef, useEffect, useState } from 'react';
 import { ArrowUp, Plus, X } from 'lucide-react';
 
 export interface ImageAttachment {
-  dataUrl: string;   // base64 data URL — for display + sending
-  mimeType: string;  // e.g. 'image/jpeg'
+  dataUrl: string; // base64 data URL — for display + sending
+  mimeType: string; // e.g. 'image/jpeg'
   name: string;
 }
 
@@ -112,7 +112,11 @@ export default function ChatInput({
       const file = item.getAsFile();
       if (!file) continue;
       const dataUrl = await readFileAsDataUrl(file);
-      loaded.push({ dataUrl, mimeType: file.type, name: `pasted-image.${file.type.split('/')[1]}` });
+      loaded.push({
+        dataUrl,
+        mimeType: file.type,
+        name: `pasted-image.${file.type.split('/')[1]}`,
+      });
     }
     setImages(prev => [...prev, ...loaded]);
   };
@@ -224,10 +228,19 @@ export default function ChatInput({
               e.currentTarget.style.transform = 'scale(1)';
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" y1="19" x2="12" y2="22"/>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="22" />
             </svg>
           </button>
         </div>

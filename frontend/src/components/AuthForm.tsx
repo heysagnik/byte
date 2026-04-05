@@ -19,7 +19,7 @@ export default function AuthForm() {
       const endpoint = mode === 'login' ? '/auth/login' : '/auth/register';
       const { data } = await api.post<{ token: string; user: { id: string; email: string } }>(
         endpoint,
-        { email, password }
+        { email, password },
       );
       login(data.token, data.user);
     } catch (err: unknown) {
@@ -43,7 +43,10 @@ export default function AuthForm() {
       {/* ── Logo header band ───────────────────────────────────── */}
       <div
         className="px-8 pt-8 pb-7 flex flex-col gap-1.5"
-        style={{ background: 'var(--text-primary)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        style={{
+          background: 'var(--text-primary)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
       >
         {/* Logo mark + wordmark */}
         <div className="flex items-center gap-2.5 mb-1">
@@ -61,7 +64,11 @@ export default function AuthForm() {
         </div>
         <p
           className="text-[12px] tracking-wide"
-          style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-hint)', letterSpacing: '0.04em' }}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--text-hint)',
+            letterSpacing: '0.04em',
+          }}
         >
           Your personal AI agent. Nothing extra.
         </p>
@@ -74,7 +81,11 @@ export default function AuthForm() {
           <label
             htmlFor="auth-email"
             className="text-[11px] font-bold uppercase tracking-widest"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+            style={{
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-muted)',
+              letterSpacing: '0.12em',
+            }}
           >
             Email
           </label>
@@ -110,7 +121,11 @@ export default function AuthForm() {
           <label
             htmlFor="auth-password"
             className="text-[11px] font-bold uppercase tracking-widest"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+            style={{
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-muted)',
+              letterSpacing: '0.12em',
+            }}
           >
             Password
           </label>
@@ -159,18 +174,23 @@ export default function AuthForm() {
             color: 'var(--bg-elevated)',
             letterSpacing: '0.06em',
           }}
-          onMouseEnter={e => { if (!loading) (e.currentTarget.style.background = 'var(--accent)'); }}
-          onMouseLeave={e => { if (!loading) (e.currentTarget.style.background = 'var(--text-primary)'); }}
+          onMouseEnter={e => {
+            if (!loading) e.currentTarget.style.background = 'var(--accent)';
+          }}
+          onMouseLeave={e => {
+            if (!loading) e.currentTarget.style.background = 'var(--text-primary)';
+          }}
         >
           {loading ? '...' : mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
       </form>
 
       {/* ── Footer toggle ─────────────────────────────────────── */}
-      <div
-        className="px-8 pb-7 pt-0 flex justify-center"
-      >
-        <p className="text-[12px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
+      <div className="px-8 pb-7 pt-0 flex justify-center">
+        <p
+          className="text-[12px]"
+          style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}
+        >
           {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
           <button
             type="button"

@@ -10,13 +10,19 @@ import type { UserProfile } from './context';
 export function buildOrchestratorPrompt(user: UserProfile): string {
   const { userName, location, timezone, country, localTime } = user;
 
-  const locationLine = location
-    ? `Location:   ${location}${country ? ` (${country})` : ''}`
-    : null;
-  const timeLine = localTime && timezone
-    ? `Local time: ${localTime} (${timezone})`
-    : null;
+  const locationLine = location ? `Location:   ${location}${country ? ` (${country})` : ''}` : null;
+  const timeLine = localTime && timezone ? `Local time: ${localTime} (${timezone})` : null;
   const userContextBlock = [locationLine, timeLine].filter(Boolean).join('\n');
+
+  const locationSection = userContextBlock
+    ? `${userContextBlock}
+
+Use the user's location automatically when relevant:
+- Local searches (restaurants, services, businesses) default to their area unless told otherwise
+- Phone number lookups should prefer their region
+- Time-sensitive references ("tonight", "tomorrow", "now") are interpreted in their local time
+- Always prefer local/regional options unless ${userName} specifies otherwise`
+    : `Location: not set — if ${userName} asks for anything location-specific, ask them which city or area they mean. Do NOT say you don't have access to their location. Just ask naturally: "Which city should I search in?"`;
 
   return `You are Byte — the personal AI agent of ${userName}. You are not a chatbot or an assistant that just gives advice. You take real action in the world on ${userName}'s behalf. You think like a chief of staff: anticipate needs, plan before acting, delegate efficiently, and always report back with precision.
 
@@ -24,13 +30,7 @@ export function buildOrchestratorPrompt(user: UserProfile): string {
 USER CONTEXT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Name: ${userName}
-${userContextBlock || 'Location: unknown'}
-
-Use the user's location automatically when relevant:
-- Local searches (restaurants, services, businesses) default to their area unless told otherwise
-- Phone number lookups should prefer their region
-- Time-sensitive references ("tonight", "tomorrow", "now") are interpreted in their local time
-- Always prefer local/regional options unless ${userName} specifies otherwise
+${locationSection}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 IDENTITY & VOICE
@@ -304,9 +304,10 @@ export function buildSubAgentPrompt(
   allowedTools: string[],
 ): string {
   const { userName, location, timezone, localTime } = user;
-  const toolList = allowedTools.length > 0
-    ? allowedTools.map(t => `  - ${t}`).join('\n')
-    : '  (none — use Google Search grounding only)';
+  const toolList =
+    allowedTools.length > 0
+      ? allowedTools.map(t => `  - ${t}`).join('\n')
+      : '  (none — use Google Search grounding only)';
 
   const locationHint = location
     ? `\nUser location: ${location}${timezone ? ` / ${timezone}` : ''}${localTime ? ` (local time: ${localTime})` : ''}. Use this as the default location for any searches unless the task specifies otherwise.`

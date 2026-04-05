@@ -26,7 +26,13 @@ function buildTurns(messages: Message[]): Turn[] {
 
   for (const msg of messages) {
     if (msg.role === 'user') {
-      turns.push({ user: msg, placeholder: null, notifications: [], responses: [], approvalMessage: null });
+      turns.push({
+        user: msg,
+        placeholder: null,
+        notifications: [],
+        responses: [],
+        approvalMessage: null,
+      });
       continue;
     }
     if (turns.length === 0) continue;
@@ -57,7 +63,7 @@ export default function ThreadView({ messages, threadId, onlyLatest }: ThreadVie
 
   useEffect(() => {
     lastTurnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allTurns.length]);
 
   if (messages.length === 0) {
@@ -79,25 +85,23 @@ export default function ThreadView({ messages, threadId, onlyLatest }: ThreadVie
           const isThinking = !!turn.placeholder && turn.responses.length === 0 && !placeholderDone;
 
           return (
-            <div
-              key={turn.user.id}
-              ref={isLast ? lastTurnRef : undefined}
-              className="mb-6"
-            >
+            <div key={turn.user.id} ref={isLast ? lastTurnRef : undefined} className="mb-6">
               {/* User message */}
               <MessageBubble message={turn.user} threadId={threadId} />
 
               {/* Agent progress — steps + notifications merged in one accordion */}
               {(turn.placeholder || turn.notifications.length > 0) && (
                 <MessageBubble
-                  message={turn.placeholder ?? {
-                    id: `placeholder-${turn.user.id}`,
-                    threadId,
-                    role: 'agent',
-                    content: '',
-                    metadata: { type: isThinking ? 'thinking' : 'done', steps: [] },
-                    createdAt: turn.user.createdAt,
-                  }}
+                  message={
+                    turn.placeholder ?? {
+                      id: `placeholder-${turn.user.id}`,
+                      threadId,
+                      role: 'agent',
+                      content: '',
+                      metadata: { type: isThinking ? 'thinking' : 'done', steps: [] },
+                      createdAt: turn.user.createdAt,
+                    }
+                  }
                   isThinking={isThinking}
                   threadId={threadId}
                   notifications={turn.notifications.map(m => ({
@@ -110,10 +114,7 @@ export default function ThreadView({ messages, threadId, onlyLatest }: ThreadVie
 
               {/* Approval request — rendered as its own card with option buttons */}
               {turn.approvalMessage && (
-                <MessageBubble
-                  message={turn.approvalMessage}
-                  threadId={threadId}
-                />
+                <MessageBubble message={turn.approvalMessage} threadId={threadId} />
               )}
 
               {/* Final agent response */}

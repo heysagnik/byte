@@ -38,14 +38,17 @@ async function resolveLocationFromIp(ip: string): Promise<{
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=status,city,regionName,country,countryCode,timezone`, {
-      signal: controller.signal,
-    });
+    const res = await fetch(
+      `http://ip-api.com/json/${ip}?fields=status,city,regionName,country,countryCode,timezone`,
+      {
+        signal: controller.signal,
+      },
+    );
     clearTimeout(timeout);
 
     if (!res.ok) return null;
 
-    const data = await res.json() as IpApiResponse;
+    const data = (await res.json()) as IpApiResponse;
     if (data.status !== 'success') return null;
 
     const locationParts = [data.city, data.regionName].filter(Boolean);
@@ -131,35 +134,36 @@ export async function resolveUserProfile(
 
     if (!userName) return null; // still unknown — orchestrator will prompt
 
-    // ── Location ──────────────────────────────────────────────────────────────
+    // ── Location — only resolve when user has opted in ────────────────────────
     let location = user.location ?? null;
     let timezone = user.timezone ?? null;
     let country = user.country ?? null;
 
-    // Refresh location if we have an IP and no cached location
-    if (!location && clientIp) {
-      const geo = await resolveLocationFromIp(clientIp);
-      if (geo) {
-        location = geo.location;
-        timezone = geo.timezone;
-        country = geo.country;
-        // Persist async — non-blocking
-        User.findByIdAndUpdate(userId, { location, timezone, country }).catch(() => {});
-      }
-    }
-
-    // If we already have cached location but new IP available, refresh in background
-    // (handles users who travel — updates on their next message)
-    if (location && clientIp && !isPrivateIp(clientIp)) {
-      resolveLocationFromIp(clientIp).then(geo => {
-        if (geo && (geo.location !== location || geo.timezone !== timezone)) {
-          User.findByIdAndUpdate(userId, {
-            location: geo.location,
-            timezone: geo.timezone,
-            country: geo.country,
-          }).catch(() => {});
+    if (user.autoLocation && clientIp) {
+      // Refresh location if we have an IP and no cached location
+      if (!location) {
+        const geo = await resolveLocationFromIp(clientIp);
+        if (geo) {
+          location = geo.location;
+          timezone = geo.timezone;
+          country = geo.country;
+          // Persist async — non-blocking
+          User.findByIdAndUpdate(userId, { location, timezone, country }).catch(() => {});
         }
-      }).catch(() => {});
+      } else if (!isPrivateIp(clientIp)) {
+        // Already have cached location — refresh in background (handles travel)
+        resolveLocationFromIp(clientIp)
+          .then(geo => {
+            if (geo && (geo.location !== location || geo.timezone !== timezone)) {
+              User.findByIdAndUpdate(userId, {
+                location: geo.location,
+                timezone: geo.timezone,
+                country: geo.country,
+              }).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
     }
 
     return {
@@ -172,4 +176,29 @@ export async function resolveUserProfile(
   } catch {
     return null;
   }
+}
+
+/**
+ * Standalone geo resolver — called directly by the settings endpoint
+ * to immediately fetch and persist location for the current user/IP.
+ */
+export async function refreshUserLocation(
+  userId: string,
+  clientIp: string,
+): Promise<{ location: string | null; timezone: string | null; country: string | null }> {
+  const geo = await resolveLocationFromIp(clientIp);
+  if (!geo) return { location: null, timezone: null, country: null };
+
+  try {
+    const { User } = await import('../models/User.js');
+    await User.findByIdAndUpdate(userId, {
+      location: geo.location,
+      timezone: geo.timezone,
+      country: geo.country,
+    });
+  } catch {
+    /* non-fatal */
+  }
+
+  return geo;
 }

@@ -4,7 +4,15 @@
  */
 
 export interface AgentStep {
-  type: 'thinking' | 'searching' | 'calling' | 'result' | 'waiting_approval' | 'error' | 'agent_spawn' | 'agent_done';
+  type:
+    | 'thinking'
+    | 'searching'
+    | 'calling'
+    | 'result'
+    | 'waiting_approval'
+    | 'error'
+    | 'agent_spawn'
+    | 'agent_done';
   content: string;
   timestamp: number;
   /** Optional label for sub-agent steps (e.g. "Research Agent") */

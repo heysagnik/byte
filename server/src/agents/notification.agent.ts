@@ -12,7 +12,7 @@ export class NotificationAgent {
 
   async sendApprovalRequest(
     summary: string,
-    options: Array<{ label: string; details: string; price?: string; recommended?: boolean }>
+    options: Array<{ label: string; details: string; price?: string; recommended?: boolean }>,
   ): Promise<string> {
     await db.insertMessage(this.threadId, 'system', summary, { type: 'waiting_approval', options });
     return `Approval request sent with ${options.length} options`;
@@ -49,6 +49,9 @@ export const notificationTool: ToolHandler = {
   },
   async handle(args: Record<string, unknown>, ctx: import('./registry').ToolContext) {
     const agent = new NotificationAgent(ctx.threadId);
-    return agent.send(args.message as string, args.type as 'info' | 'success' | 'error' | 'waiting');
+    return agent.send(
+      args.message as string,
+      args.type as 'info' | 'success' | 'error' | 'waiting',
+    );
   },
 };

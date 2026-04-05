@@ -26,7 +26,7 @@ const UserSchema = new Schema<IUser>(
     timezone: { type: String, trim: true },
     country: { type: String, trim: true },
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+  { timestamps: { createdAt: true, updatedAt: false } },
 );
 
 export const User = model<IUser>('User', UserSchema);

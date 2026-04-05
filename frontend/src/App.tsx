@@ -22,10 +22,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route
-        path="/auth"
-        element={isLoggedIn ? <Navigate to="/" replace /> : <AuthPage />}
-      />
+      <Route path="/auth" element={isLoggedIn ? <Navigate to="/" replace /> : <AuthPage />} />
       <Route
         path="/"
         element={

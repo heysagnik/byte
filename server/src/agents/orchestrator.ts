@@ -9,7 +9,13 @@
  *  - Persist steps to DB and broadcast over SSE
  */
 
-import { GoogleGenerativeAI, Content, Part, FunctionResponsePart, SchemaType } from '@google/generative-ai';
+import {
+  GoogleGenerativeAI,
+  Content,
+  Part,
+  FunctionResponsePart,
+  SchemaType,
+} from '@google/generative-ai';
 import type { Tool } from '@google/generative-ai';
 import { registry } from './registry';
 import { SubAgent } from './sub-agent';
@@ -26,45 +32,45 @@ import type { AgentStep, AgentContext, SubAgentResult } from './context';
 const MAX_ITERATIONS = 25;
 
 // Tools that must run sequentially (one at a time)
-const SEQUENTIAL_TOOLS = new Set([
-  'mcp_phonecall_make_phone_call',
-  'request_user_approval',
-]);
+const SEQUENTIAL_TOOLS = new Set(['mcp_phonecall_make_phone_call', 'request_user_approval']);
 
 // ─── spawn_agent tool declaration ─────────────────────────────────────────────
 
 const SPAWN_AGENT_TOOL: Tool = {
-  functionDeclarations: [{
-    name: 'spawn_agent',
-    description:
-      'Launch one or more specialized sub-agents to handle focused subtasks in parallel. ' +
-      'Each sub-agent runs independently with its own tool set and returns a result. ' +
-      'Spawn multiple agents in a SINGLE turn to run them concurrently. ' +
-      'Do NOT spawn agents for: request_user_approval (run directly in orchestrator).',
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        agent_name: {
-          type: SchemaType.STRING,
-          description: 'Short human-readable label shown in the UI. E.g. "Research Agent", "Call Agent", "Draft Agent".',
+  functionDeclarations: [
+    {
+      name: 'spawn_agent',
+      description:
+        'Launch one or more specialized sub-agents to handle focused subtasks in parallel. ' +
+        'Each sub-agent runs independently with its own tool set and returns a result. ' +
+        'Spawn multiple agents in a SINGLE turn to run them concurrently. ' +
+        'Do NOT spawn agents for: request_user_approval (run directly in orchestrator).',
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          agent_name: {
+            type: SchemaType.STRING,
+            description:
+              'Short human-readable label shown in the UI. E.g. "Research Agent", "Call Agent", "Draft Agent".',
+          },
+          task: {
+            type: SchemaType.STRING,
+            description:
+              'Complete, self-contained instruction for the sub-agent. ' +
+              'Include all context it needs — it has no access to the conversation history.',
+          },
+          tools: {
+            type: SchemaType.ARRAY,
+            items: { type: SchemaType.STRING },
+            description:
+              'Tool names the sub-agent may use. Available: "mcp_phonecall_make_phone_call", "send_notification". ' +
+              'Google Search grounding is always available. Omit for research-only agents.',
+          },
         },
-        task: {
-          type: SchemaType.STRING,
-          description:
-            'Complete, self-contained instruction for the sub-agent. ' +
-            'Include all context it needs — it has no access to the conversation history.',
-        },
-        tools: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.STRING },
-          description:
-            'Tool names the sub-agent may use. Available: "mcp_phonecall_make_phone_call", "send_notification". ' +
-            'Google Search grounding is always available. Omit for research-only agents.',
-        },
+        required: ['agent_name', 'task'],
       },
-      required: ['agent_name', 'task'],
     },
-  }],
+  ],
 };
 
 // ─── Per-thread cancel registry ───────────────────────────────────────────────
@@ -99,7 +105,10 @@ export class OrchestratorAgent {
 
   // ── Public entry point ──────────────────────────────────────────────────────
 
-  async run(userMessage: string, images?: Array<{ dataUrl: string; mimeType: string; name: string }>): Promise<string> {
+  async run(
+    userMessage: string,
+    images?: Array<{ dataUrl: string; mimeType: string; name: string }>,
+  ): Promise<string> {
     const ctrl = new AbortController();
     this.abortSignal = ctrl.signal;
     cancelControllers.set(this.threadId, ctrl);
@@ -127,11 +136,13 @@ export class OrchestratorAgent {
           return 'Cancelled.';
         }
         if (this.agentMessageId) {
-          await db.updateMessageMetadata(this.agentMessageId, {
-            type: 'done',
-            steps: this.steps,
-            seq: this.stepSeq + 1,
-          }).catch(() => {});
+          await db
+            .updateMessageMetadata(this.agentMessageId, {
+              type: 'done',
+              steps: this.steps,
+              seq: this.stepSeq + 1,
+            })
+            .catch(() => {});
         }
         throw err;
       }
@@ -153,7 +164,11 @@ export class OrchestratorAgent {
 
     await this.reportStep({ type: 'thinking', content: 'Planning...', timestamp: Date.now() });
 
-    const model = this.genAI.getGenerativeModel({ model: env.GEMINI_MODEL, tools, systemInstruction });
+    const model = this.genAI.getGenerativeModel({
+      model: env.GEMINI_MODEL,
+      tools,
+      systemInstruction,
+    });
     const chat = model.startChat({ history });
 
     // Build multimodal parts if images are present
@@ -166,10 +181,16 @@ export class OrchestratorAgent {
     }
     const firstTurn: string | Part[] = firstTurnParts.length > 1 ? firstTurnParts : userMessage;
 
-    let response = await geminiLimiter.schedule(() => chat.sendMessage(firstTurn), this.abortSignal).catch(err => {
-      this.reportStep({ type: 'error', content: `AI unreachable: ${String(err)}`, timestamp: Date.now() });
-      throw err;
-    });
+    let response = await geminiLimiter
+      .schedule(() => chat.sendMessage(firstTurn), this.abortSignal)
+      .catch(err => {
+        this.reportStep({
+          type: 'error',
+          content: `AI unreachable: ${String(err)}`,
+          timestamp: Date.now(),
+        });
+        throw err;
+      });
 
     let iterations = 0;
 
@@ -184,20 +205,38 @@ export class OrchestratorAgent {
       const results = await this.dispatchTools(callParts, ctx);
 
       if (this.abortSignal.aborted) throw new Error('cancelled');
-      await this.reportStep({ type: 'thinking', content: 'Synthesizing results...', timestamp: Date.now() });
-
-      response = await geminiLimiter.schedule(() => chat.sendMessage(results as Part[]), this.abortSignal).catch(err => {
-        this.reportStep({ type: 'error', content: `AI error: ${String(err)}`, timestamp: Date.now() });
-        throw err;
+      await this.reportStep({
+        type: 'thinking',
+        content: 'Synthesizing results...',
+        timestamp: Date.now(),
       });
+
+      response = await geminiLimiter
+        .schedule(() => chat.sendMessage(results as Part[]), this.abortSignal)
+        .catch(err => {
+          this.reportStep({
+            type: 'error',
+            content: `AI error: ${String(err)}`,
+            timestamp: Date.now(),
+          });
+          throw err;
+        });
     }
 
     if (iterations >= MAX_ITERATIONS) {
-      await this.reportStep({ type: 'error', content: 'Max steps reached — stopping.', timestamp: Date.now() });
+      await this.reportStep({
+        type: 'error',
+        content: 'Max steps reached — stopping.',
+        timestamp: Date.now(),
+      });
     }
 
     let finalText = '';
-    try { finalText = response.response.text(); } catch { /* empty */ }
+    try {
+      finalText = response.response.text();
+    } catch {
+      /* empty */
+    }
 
     await this.finalize(finalText || 'Task completed.');
     return finalText || 'Task completed.';
@@ -228,7 +267,10 @@ export class OrchestratorAgent {
     return [...spawnResults, ...regularResults];
   }
 
-  private async dispatchSequential(callParts: Part[], ctx: AgentContext): Promise<FunctionResponsePart[]> {
+  private async dispatchSequential(
+    callParts: Part[],
+    ctx: AgentContext,
+  ): Promise<FunctionResponsePart[]> {
     const results: FunctionResponsePart[] = [];
     for (const part of callParts) {
       if (part.functionCall!.name === 'spawn_agent') {
@@ -242,7 +284,10 @@ export class OrchestratorAgent {
   }
 
   /** Run all spawn_agent calls concurrently — each becomes a SubAgent */
-  private async dispatchSubAgents(spawnCalls: Part[], ctx: AgentContext): Promise<FunctionResponsePart[]> {
+  private async dispatchSubAgents(
+    spawnCalls: Part[],
+    ctx: AgentContext,
+  ): Promise<FunctionResponsePart[]> {
     const agents = spawnCalls.map(part => {
       const args = part.functionCall!.args as Record<string, unknown>;
       const agentName = String(args['agent_name'] ?? 'Sub-Agent');
@@ -270,7 +315,11 @@ export class OrchestratorAgent {
       return { functionResponse: { name, response: { result } } };
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Tool call failed';
-      await this.reportStep({ type: 'error', content: `${name}: ${errMsg}`, timestamp: Date.now() });
+      await this.reportStep({
+        type: 'error',
+        content: `${name}: ${errMsg}`,
+        timestamp: Date.now(),
+      });
       return { functionResponse: { name, response: { error: errMsg } } };
     }
   }
@@ -278,10 +327,7 @@ export class OrchestratorAgent {
   // ── Tool list ───────────────────────────────────────────────────────────────
 
   private buildTools(): Tool[] {
-    return [
-      SPAWN_AGENT_TOOL,
-      ...registry.allTools(),
-    ];
+    return [SPAWN_AGENT_TOOL, ...registry.allTools()];
   }
 
   // ── Finalization ────────────────────────────────────────────────────────────
@@ -289,11 +335,13 @@ export class OrchestratorAgent {
   private async finalizeCancelled(): Promise<void> {
     await this.reportStep({ type: 'error', content: 'Stopped by user.', timestamp: Date.now() });
     if (this.agentMessageId) {
-      await db.updateMessageMetadata(this.agentMessageId, {
-        type: 'done',
-        steps: this.steps,
-        seq: this.stepSeq + 1,
-      }).catch(() => {});
+      await db
+        .updateMessageMetadata(this.agentMessageId, {
+          type: 'done',
+          steps: this.steps,
+          seq: this.stepSeq + 1,
+        })
+        .catch(() => {});
     }
   }
 
@@ -313,21 +361,25 @@ export class OrchestratorAgent {
   private async reportStep(step: AgentStep): Promise<void> {
     this.steps.push(step);
     const seq = ++this.stepSeq;
-    console.log(`[byte:${this.threadId}]${step.agentLabel ? ` [${step.agentLabel}]` : ''} ${step.type}: ${step.content}`);
+    console.log(
+      `[byte:${this.threadId}]${step.agentLabel ? ` [${step.agentLabel}]` : ''} ${step.type}: ${step.content}`,
+    );
 
     if (!this.agentMessageId) return;
 
     broadcastStep(this.threadId, this.agentMessageId, step);
 
     const snapshot = [...this.steps];
-    db.updateMessageMetadata(this.agentMessageId, { type: 'thinking', steps: snapshot, seq })
-      .catch(err => console.warn('[byte] step persist failed:', err));
+    db.updateMessageMetadata(this.agentMessageId, { type: 'thinking', steps: snapshot, seq }).catch(
+      err => console.warn('[byte] step persist failed:', err),
+    );
   }
 
   // ── Name prompt ─────────────────────────────────────────────────────────────
 
   private async promptForName(): Promise<string> {
-    const text = "Hi! Before we get started, what's your name? I'll use it when making calls or acting on your behalf.";
+    const text =
+      "Hi! Before we get started, what's your name? I'll use it when making calls or acting on your behalf.";
     await db.insertMessage(this.threadId, 'agent', text, { type: 'final' });
     if (this.agentMessageId) {
       await db.updateMessageMetadata(this.agentMessageId, { type: 'done', steps: [] });

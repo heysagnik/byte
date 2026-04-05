@@ -14,7 +14,7 @@ interface ThreadStore {
   refresh: () => Promise<void>;
 }
 
-export const useThreadStore = create<ThreadStore>((set) => ({
+export const useThreadStore = create<ThreadStore>(set => ({
   threads: [],
   hasLoaded: false,
   refresh: async () => {
