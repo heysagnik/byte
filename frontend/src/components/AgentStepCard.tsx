@@ -132,7 +132,7 @@ export default function AgentStepCard({
         <Accordion.Item key="steps" id="steps">
           <Accordion.Heading>
             <Accordion.Trigger
-              className="py-1.5 px-2 rounded-lg outline-none transition-colors w-full flex items-center gap-2 w-max"
+              className="py-1.5 px-2 rounded-lg outline-none transition-colors max-w-full flex items-center gap-2 w-fit"
               style={{
                 fontFamily: 'var(--font-mono)',
                 fontSize: '11px',

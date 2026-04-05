@@ -53,7 +53,7 @@ export default function ThreadPage() {
       {!isReady ? (
         /* ux-doherty-perceived-speed — skeleton rows while messages load */
         <div className={`flex-1 overflow-y-auto`}>
-          <div className={`${CONTENT_WIDTH} mx-auto px-6 py-6 w-full space-y-6`}>
+          <div className={`${CONTENT_WIDTH} mx-auto px-4 md:px-6 py-6 w-full space-y-6`}>
             {[80, 55, 70].map((w, i) => (
               <div key={i} className="flex flex-col gap-3">
                 <div className="flex justify-end">
@@ -82,7 +82,7 @@ export default function ThreadPage() {
         <ThreadView messages={messages} threadId={id ?? ''} />
       )}
 
-      <div className={`shrink-0 px-6 pb-5 pt-2 ${CONTENT_WIDTH} mx-auto w-full`}>
+      <div className={`shrink-0 px-4 md:px-6 pb-5 pt-2 ${CONTENT_WIDTH} mx-auto w-full`}>
         <ChatInput
           onSend={handleSend}
           onCancel={handleCancel}

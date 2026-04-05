@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '@heroui/react';
-import { Plus, Search, LogOut, Trash2, Settings } from 'lucide-react';
+import { Plus, Search, Trash2, Settings } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useThreadList } from '../hooks/useThreadList';
-import SettingsModal from './SettingsModal';
+import { useUIStore } from '../store/uiStore';
+import { useUserSettingsStore } from '../store/userSettingsStore';
 import { api } from '../lib/api';
 
 export default function Sidebar() {
@@ -14,7 +15,12 @@ export default function Sidebar() {
   const { threads, refresh } = useThreadList();
   const [search, setSearch] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const { isSidebarOpen, setSidebarOpen, setSettingsOpen } = useUIStore();
+  const { name: dbName, fetchSettings } = useUserSettingsStore();
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleDelete = async (e: React.MouseEvent, threadId: string) => {
     e.stopPropagation();
@@ -28,8 +34,9 @@ export default function Sidebar() {
     }
   };
 
-  const username = user?.email?.split('@')[0] ?? '';
-  const initials = username.slice(0, 2).toUpperCase() || '?';
+  const emailName = user?.email?.split('@')[0] ?? '';
+  const displayName = dbName || emailName;
+  const initials = displayName.slice(0, 2).toUpperCase() || '?';
 
   const filtered = search.trim()
     ? threads.filter(t => t.title.toLowerCase().includes(search.toLowerCase()))
@@ -38,7 +45,9 @@ export default function Sidebar() {
   return (
     <aside
       aria-label="Sidebar"
-      className="w-[260px] shrink-0 flex flex-col h-full overflow-x-hidden"
+      className={`w-[260px] shrink-0 flex flex-col h-full overflow-x-hidden fixed lg:relative z-50 transition-transform duration-300 ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}
       style={{
         background: 'var(--bg-surface)',
         borderRight: '1px solid var(--border)',
@@ -66,7 +75,7 @@ export default function Sidebar() {
           })}
         </div>
         <button
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => setSettingsOpen(true)}
           aria-label="Settings"
           className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
           style={{ color: 'var(--text-hint)' }}
@@ -80,7 +89,10 @@ export default function Sidebar() {
       {/* ── New Chat button ─────────────────────────────────────── */}
       <div className="px-3 pt-1 pb-2 shrink-0">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => {
+            navigate('/');
+            setSidebarOpen(false);
+          }}
           className="w-full flex items-center gap-2 px-3 h-8 rounded-lg text-[12px] transition-all duration-150"
           style={{
             fontFamily: 'var(--font-body)',
@@ -148,7 +160,10 @@ export default function Sidebar() {
                   style={{ animationDelay: `${idx * 30}ms` }}
                 >
                   <button
-                    onClick={() => navigate(`/thread/${t.id}`)}
+                    onClick={() => {
+                      navigate(`/thread/${t.id}`);
+                      setSidebarOpen(false);
+                    }}
                     aria-current={t.id === activeThreadId ? 'page' : undefined}
                     className="flex-1 min-w-0 flex items-center px-2.5 h-8 rounded-lg text-[13px] text-left transition-all duration-150"
                     style={{
@@ -225,12 +240,10 @@ export default function Sidebar() {
             className="flex-1 text-[13px] font-medium truncate min-w-0"
             style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
           >
-            {username}
+            {displayName}
           </span>
         </div>
       </div>
-
-      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
     </aside>
   );
 }

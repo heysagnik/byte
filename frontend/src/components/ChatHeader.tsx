@@ -1,11 +1,13 @@
 import { useThreadList } from '../hooks/useThreadList';
-import { Share, Pencil } from 'lucide-react';
+import { Share, Pencil, Menu } from 'lucide-react';
+import { useUIStore } from '../store/uiStore';
 
 interface ChatHeaderProps {
   threadId: string;
 }
 
 export default function ChatHeader({ threadId }: ChatHeaderProps) {
+  const { toggleSidebar } = useUIStore();
   const { threads } = useThreadList();
   const thread = threads.find(t => t.id === threadId);
   const title = thread?.title ?? '';
@@ -18,17 +20,29 @@ export default function ChatHeader({ threadId }: ChatHeaderProps) {
         borderBottom: '1px solid var(--border)',
       }}
     >
-      {/* Thread title — Space Mono, uppercase, small-tracked */}
-      <p
-        className="text-[11px] uppercase tracking-widest truncate max-w-[60%] leading-snug"
-        style={{
-          fontFamily: 'var(--font-mono)',
-          color: 'var(--text-muted)',
-          letterSpacing: '0.12em',
-        }}
-      >
-        {title}
-      </p>
+      <div className="flex items-center gap-2 max-w-[60%]">
+        <button
+          onClick={toggleSidebar}
+          aria-label="Toggle Menu"
+          className="lg:hidden w-7 h-7 flex items-center justify-center rounded-md transition-colors shrink-0"
+          style={{ color: 'var(--text-hint)' }}
+          onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-hint)')}
+        >
+          <Menu size={16} strokeWidth={2} />
+        </button>
+        {/* Thread title — Space Mono, uppercase, small-tracked */}
+        <p
+          className="text-[11px] uppercase tracking-widest truncate leading-snug"
+          style={{
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--text-muted)',
+            letterSpacing: '0.12em',
+          }}
+        >
+          {title}
+        </p>
+      </div>
 
       {/* Action buttons */}
       <div className="flex items-center gap-1 shrink-0">

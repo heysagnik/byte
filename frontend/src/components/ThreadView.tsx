@@ -76,7 +76,7 @@ export default function ThreadView({ messages, threadId, onlyLatest }: ThreadVie
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className={`${CONTENT_WIDTH} mx-auto px-6 py-6 w-full`}>
+      <div className={`${CONTENT_WIDTH} mx-auto px-4 md:px-6 py-6 w-full`}>
         {turns.map((turn, i) => {
           const isLast = i === turns.length - 1;
           // Still thinking if placeholder exists, has no final response yet,

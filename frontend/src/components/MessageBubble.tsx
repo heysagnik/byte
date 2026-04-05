@@ -58,7 +58,7 @@ export default function MessageBubble({
   if (message.role === 'user') {
     return (
       <div className="flex justify-end py-1.5">
-        <div className="max-w-[78%] flex flex-col items-end gap-1.5">
+        <div className="max-w-[90%] md:max-w-[78%] flex flex-col items-end gap-1.5">
           {/* Image attachments */}
           {message.images && message.images.length > 0 && (
             <div className="flex flex-wrap gap-1.5 justify-end">

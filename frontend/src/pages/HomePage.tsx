@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import ChatInput, { type ImageAttachment } from '../components/ChatInput';
 import { api } from '../lib/api';
 import { useThreadList } from '../hooks/useThreadList';
+import { Menu } from 'lucide-react';
+import { useUIStore } from '../store/uiStore';
 
 const SUGGESTIONS = ['Make a call', 'Research something', 'Craft a message', 'Book something'];
 
@@ -18,6 +20,7 @@ export default function HomePage() {
   const [inputVal, setInputVal] = useState('');
   const navigate = useNavigate();
   const { refresh } = useThreadList();
+  const { toggleSidebar } = useUIStore();
 
   const handleSend = async (message: string, images?: ImageAttachment[]) => {
     setSending(true);
@@ -45,10 +48,20 @@ export default function HomePage() {
 
   return (
     <div
-      className="flex-1 flex flex-col items-center justify-center px-6 py-16"
+      className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 py-16 relative"
       style={{ background: 'var(--bg-page)' }}
     >
-      <div className="w-full max-w-2xl flex flex-col items-center gap-8">
+      <div className="absolute top-0 left-0 right-0 p-4 lg:hidden flex justify-between items-center">
+        <button
+          onClick={toggleSidebar}
+          aria-label="Toggle Menu"
+          className="w-9 h-9 flex items-center justify-center rounded-md transition-colors"
+          style={{ color: 'var(--text-hint)' }}
+        >
+          <Menu size={20} strokeWidth={2} />
+        </button>
+      </div>
+      <div className="w-full max-w-2xl flex flex-col items-center gap-8 mt-8 lg:mt-0">
         {/* ── Greeting label — entrance: delay 0ms ────────────────── */}
         <div
           className="flex items-center gap-2.5 animate-fade-up"

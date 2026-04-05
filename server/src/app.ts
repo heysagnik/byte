@@ -28,7 +28,6 @@ export function createApp() {
   app.get('/', healthHandler);
   app.get('/health', healthHandler);
 
-
   app.use('/api/auth', authRoutes);
   app.use('/api/user', userRoutes);
   app.use('/api/threads', threadRoutes);

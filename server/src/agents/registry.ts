@@ -83,7 +83,6 @@ class ToolRegistry {
         // Merge any extra env vars on top.
         env: { ...process.env, ...(config.env ?? {}) } as Record<string, string>,
       });
-
     } else if (config.type === 'sse' && config.url) {
       transport = new StreamableHTTPClientTransport(new URL(config.url));
     } else {

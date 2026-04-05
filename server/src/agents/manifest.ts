@@ -25,9 +25,7 @@ export async function registerMCPTools(): Promise<void> {
   const isProd = fs.existsSync(compiledJs);
 
   const command = isProd ? 'node' : 'tsx';
-  const mcpFile = isProd
-    ? compiledJs
-    : path.join(__dirname, '../mcp-servers/phonecall.mcp.ts');
+  const mcpFile = isProd ? compiledJs : path.join(__dirname, '../mcp-servers/phonecall.mcp.ts');
 
   await registry.registerMCP('phonecall', {
     type: 'stdio',
