@@ -11,9 +11,11 @@
     "dev:server": "npm run dev --workspace=server",
     "build:frontend": "npm run build --workspace=frontend",
     "build:server": "npm run build --workspace=server",
+    "start": "npm install --prefix server && npm run build --prefix server && node server/dist/index.js",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\""
   },
+
   "devDependencies": {
     "prettier": "^3.5.3"
   }
