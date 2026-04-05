@@ -50,27 +50,68 @@ export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
     // Optimistic update locally
     set(updates as Partial<UserSettingsState>);
 
-    // When autoLocation is toggled ON — let the server resolve the IP
+    // When autoLocation is toggled ON — try GPS first, fall back to IP
     if (updates.autoLocation === true) {
-      try {
-        const { data } = await api.post<{ location: string; timezone: string; country: string }>(
-          '/user/settings',
-          { autoLocation: true },
-        );
-        // Save autoLocation flag first, then immediately resolve location
-        const geoRes = await api.post<{ location: string; timezone: string; country: string }>(
-          '/user/refresh-location',
-        );
-        set({
-          autoLocation: true,
-          location: geoRes.data.location,
-          timezone: geoRes.data.timezone,
-          country: geoRes.data.country,
+      // Persist the toggle immediately
+      await api.put('/user/settings', { autoLocation: true }).catch(() => {});
+
+      const tryGPS = (): Promise<void> =>
+        new Promise(resolve => {
+          if (!navigator.geolocation) {
+            resolve();
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            async pos => {
+              try {
+                const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const geoRes = await api.post<{
+                  location: string;
+                  timezone: string;
+                  country: string;
+                }>('/user/location-by-coords', {
+                  lat: pos.coords.latitude,
+                  lon: pos.coords.longitude,
+                  timezone: tz,
+                });
+                set({
+                  autoLocation: true,
+                  location: geoRes.data.location,
+                  timezone: geoRes.data.timezone || tz,
+                  country: geoRes.data.country,
+                });
+              } catch {
+                /* fall through to IP */
+              }
+              resolve();
+            },
+            async () => {
+              // GPS denied — fall back to IP
+              try {
+                const geoRes = await api.post<{
+                  location: string;
+                  timezone: string;
+                  country: string;
+                }>('/user/refresh-location');
+                set({
+                  autoLocation: true,
+                  location: geoRes.data.location,
+                  timezone: geoRes.data.timezone,
+                  country: geoRes.data.country,
+                });
+              } catch {
+                /* best effort */
+              }
+              resolve();
+            },
+            { timeout: 8000 },
+          );
         });
-        return; // already persisted above
-      } catch (err) {
-        console.warn('Failed to refresh location from server:', err);
-      }
+
+      set({ isLoading: true });
+      await tryGPS();
+      set({ isLoading: false });
+      return;
     }
 
     // When autoLocation is toggled OFF — clear geo fields

@@ -154,11 +154,8 @@ export default function AgentStepCard({
             <Accordion.Body className="pb-2 pt-1 px-1">
               {timeline.length > 0 && (
                 <div
-                  className="mt-1 ml-2 pl-3.5 grid gap-y-2.5 gap-x-3 items-start"
-                  style={{
-                    gridTemplateColumns: 'max-content 1fr',
-                    borderLeft: '1px solid var(--border)',
-                  }}
+                  className="mt-1 ml-2 pl-3.5 flex flex-col gap-y-2"
+                  style={{ borderLeft: '1px solid var(--border)' }}
                 >
                   {timeline.map((item, i) => {
                     const isLast = !isDone && i === timeline.length - 1;
@@ -176,29 +173,26 @@ export default function AgentStepCard({
                         : (stepLabel[step.type] ?? step.type);
                       const isAgentStep = step.type === 'agent_spawn' || step.type === 'agent_done';
                       return (
-                        <div key={i} className="contents">
-                          <div className="pt-[1px] animate-step-in">
-                            {showChip && (
-                              <Chip
-                                size="sm"
-                                variant="soft"
-                                className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap ${isLast ? 'opacity-100' : 'opacity-50'}`}
-                                style={{
-                                  background: isAgentStep ? 'var(--accent)' : 'var(--bg-surface)',
-                                  color: isAgentStep ? '#fff' : 'var(--text-muted)',
-                                  fontFamily: 'var(--font-mono)',
-                                }}
-                              >
-                                {chipLabel}
-                              </Chip>
-                            )}
-                          </div>
+                        <div key={i} className="flex flex-col gap-0.5 animate-step-in">
+                          {showChip && (
+                            <Chip
+                              size="sm"
+                              variant="soft"
+                              className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap w-fit ${isLast ? 'opacity-100' : 'opacity-50'}`}
+                              style={{
+                                background: isAgentStep ? 'var(--accent)' : 'var(--bg-surface)',
+                                color: isAgentStep ? '#fff' : 'var(--text-muted)',
+                                fontFamily: 'var(--font-mono)',
+                              }}
+                            >
+                              {chipLabel}
+                            </Chip>
+                          )}
                           <div
-                            className={`text-[13px] leading-[1.6] animate-step-in ${isLast ? 'font-medium' : ''}`}
+                            className={`text-[13px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
                             style={{
                               color: showChip ? 'var(--text-primary)' : 'var(--text-muted)',
                               fontFamily: 'var(--font-body)',
-                              paddingTop: showChip ? '3px' : undefined,
                             }}
                           >
                             {step.content}
@@ -213,28 +207,25 @@ export default function AgentStepCard({
                       );
                     }
 
-                    // Notification item — always gets its own chip
+                    // Notification item
                     const notif = item.data;
-                    const color = notifColor[notif.type] ?? 'default';
                     const label = notifLabel[notif.type] ?? 'Update';
                     return (
-                      <div key={i} className="contents">
-                        <div className="pt-[1px] animate-step-in">
-                          <Chip
-                            size="sm"
-                            variant="soft"
-                            className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap ${isLast ? 'opacity-100' : 'opacity-50'}`}
-                            style={{
-                              background: 'var(--bg-surface)',
-                              color: 'var(--text-muted)',
-                              fontFamily: 'var(--font-mono)',
-                            }}
-                          >
-                            {label}
-                          </Chip>
-                        </div>
+                      <div key={i} className="flex flex-col gap-0.5 animate-step-in">
+                        <Chip
+                          size="sm"
+                          variant="soft"
+                          className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap w-fit ${isLast ? 'opacity-100' : 'opacity-50'}`}
+                          style={{
+                            background: 'var(--bg-surface)',
+                            color: 'var(--text-muted)',
+                            fontFamily: 'var(--font-mono)',
+                          }}
+                        >
+                          {label}
+                        </Chip>
                         <div
-                          className={`text-[13px] leading-[1.6] animate-step-in pt-[3px] ${isLast ? 'font-medium' : ''}`}
+                          className={`text-[13px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
                           style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
                         >
                           {notif.content}

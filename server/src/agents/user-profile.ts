@@ -178,6 +178,51 @@ export async function resolveUserProfile(
   }
 }
 
+// ─── Reverse geocoding from coordinates ──────────────────────────────────────
+
+interface NominatimResponse {
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+    country_code?: string;
+  };
+}
+
+export async function resolveLocationFromCoords(
+  lat: number,
+  lon: number,
+): Promise<{ location: string | null; country: string | null } | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+      {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'byte-agent/1.0' },
+      },
+    );
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const data = (await res.json()) as NominatimResponse;
+    const a = data.address;
+    if (!a) return null;
+    const city = a.city ?? a.town ?? a.village ?? a.county ?? null;
+    const state = a.state ?? null;
+    const locationParts = [city, state].filter(Boolean);
+    return {
+      location: locationParts.length > 0 ? locationParts.join(', ') : (a.country ?? null),
+      country: a.country_code?.toUpperCase() ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Standalone geo resolver — called directly by the settings endpoint
  * to immediately fetch and persist location for the current user/IP.

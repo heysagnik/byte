@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { User } from '../models/User';
 import { authMiddleware, AuthRequest } from '../middleware/auth.middleware';
-import { refreshUserLocation } from '../agents/user-profile';
+import { refreshUserLocation, resolveLocationFromCoords } from '../agents/user-profile';
 
 const router = Router();
 
@@ -91,6 +91,36 @@ router.post('/refresh-location', async (req: AuthRequest, res) => {
     });
   } catch {
     res.status(500).json({ error: 'Failed to refresh location' });
+  }
+});
+
+// POST /user/location-by-coords — reverse-geocode browser GPS coords and persist
+router.post('/location-by-coords', async (req: AuthRequest, res) => {
+  try {
+    const { lat, lon, timezone } = req.body as { lat?: number; lon?: number; timezone?: string };
+    if (typeof lat !== 'number' || typeof lon !== 'number') {
+      res.status(400).json({ error: 'lat and lon are required' });
+      return;
+    }
+
+    const userId = req.user!.userId;
+    const geo = await resolveLocationFromCoords(lat, lon);
+    if (!geo) {
+      res.status(502).json({ error: 'Reverse geocoding failed' });
+      return;
+    }
+
+    // timezone comes from the browser (Intl.DateTimeFormat().resolvedOptions().timeZone)
+    const tz = timezone ?? null;
+    await User.findByIdAndUpdate(userId, {
+      location: geo.location,
+      country: geo.country,
+      ...(tz ? { timezone: tz } : {}),
+    });
+
+    res.json({ location: geo.location ?? '', country: geo.country ?? '', timezone: tz ?? '' });
+  } catch {
+    res.status(500).json({ error: 'Failed to save location' });
   }
 });
 
