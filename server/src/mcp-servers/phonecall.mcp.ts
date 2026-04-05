@@ -220,19 +220,18 @@ function buildConversationConfig(args: PhoneCallArgs): object {
 
   return {
     agent: {
-      prompt: {
-        prompt: systemPrompt,
-        tools: [
-          {
-            type: 'system',
-            name: 'end_call',
-            description:
-              'Hang up the phone call immediately. Call this as soon as the objective is complete, the recipient hangs up, or the call should end for any reason.',
-          },
-        ],
-      },
+      prompt: { prompt: systemPrompt },
       first_message: firstMessage,
       language: config.elevenLabsLang,
+      built_in_tools: {
+        end_call: {
+          type: 'system',
+          name: 'end_call',
+          description:
+            'Hang up the phone call immediately. Call this as soon as the objective is complete, the call is wrapping up, or the conversation is over for any reason.',
+          params: { system_tool_type: 'end_call' },
+        },
+      },
     },
   };
 }
@@ -309,11 +308,18 @@ async function waitForCallCompletion(
         return buildCallResult(data, args);
       }
 
-      // Phone still ringing (initiated) and not answered after 90s = no answer
+      // Phone still ringing (initiated) and not answered after 30s = no answer
       // Only check when status is still 'initiated' — 'in-progress' means they picked up
-      if (lastStatus === 'initiated' && !accepted && Date.now() - start > 90000) {
-        console.error('[phonecall-mcp] Call not answered after 90s (still ringing), stopping');
-        return buildCallResult(data, args);
+      if (lastStatus === 'initiated' && !accepted && Date.now() - start > 30000) {
+        console.error('[phonecall-mcp] Call not answered after 30s (still ringing), stopping');
+        return {
+          transcript: 'No answer.',
+          summary: `Called ${args.recipient_name} regarding: "${args.objective}". The call was not answered.`,
+          title: `No Answer — ${args.recipient_name}`,
+          duration_secs: 0,
+          outcome: 'no_answer',
+          termination_reason: 'no_answer',
+        };
       }
     } catch (err) {
       consecutiveErrors++;
