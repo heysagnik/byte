@@ -79,8 +79,11 @@ class ToolRegistry {
       transport = new StdioClientTransport({
         command: config.command,
         args: config.args ?? [],
-        env: config.env,
+        // Always inherit parent env — the MCP SDK does NOT do this automatically.
+        // Merge any extra env vars on top.
+        env: { ...process.env, ...(config.env ?? {}) } as Record<string, string>,
       });
+
     } else if (config.type === 'sse' && config.url) {
       transport = new StreamableHTTPClientTransport(new URL(config.url));
     } else {
