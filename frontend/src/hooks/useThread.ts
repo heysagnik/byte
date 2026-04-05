@@ -89,7 +89,8 @@ export function useThread(threadId: string | undefined) {
     loadMessages();
 
     const token = getToken();
-    const es = new EventSource(`/api/threads/${threadId}/events?token=${token}`);
+    const apiBase = import.meta.env.VITE_API_BASE ?? '/api';
+    const es = new EventSource(`${apiBase}/threads/${threadId}/events?token=${token}`);
     esRef.current = es;
 
     es.addEventListener('message:new', (e: MessageEvent) => {
