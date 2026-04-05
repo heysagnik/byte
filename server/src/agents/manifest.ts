@@ -18,12 +18,19 @@ export function registerCoreTools(): void {
 }
 
 export async function registerMCPTools(): Promise<void> {
-  const phonecallServer = path.join(__dirname, '../mcp-servers/phonecall.mcp.ts');
+  const isProd = process.env['NODE_ENV'] === 'production';
+
+  // In production: TypeScript is compiled — run the .js file with node.
+  // In development: run the .ts source directly with tsx.
+  const command = isProd ? 'node' : 'tsx';
+  const mcpFile = isProd
+    ? path.join(__dirname, '../mcp-servers/phonecall.mcp.js')
+    : path.join(__dirname, '../mcp-servers/phonecall.mcp.ts');
 
   await registry.registerMCP('phonecall', {
     type: 'stdio',
-    command: 'tsx',
-    args: [phonecallServer],
+    command,
+    args: [mcpFile],
   });
 
   console.log('[manifest] MCP tools registered');

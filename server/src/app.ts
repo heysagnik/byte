@@ -23,7 +23,6 @@ export function createApp() {
     }),
   );
 
-
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
   app.use('/api/auth', authRoutes);
