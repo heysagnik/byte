@@ -114,7 +114,12 @@ export class OrchestratorAgent {
     cancelControllers.set(this.threadId, ctrl);
 
     try {
-      const userProfile = await resolveUserProfile(this.userId, userMessage, this.clientIp);
+      const userProfile = await resolveUserProfile(
+        this.userId,
+        userMessage,
+        this.clientIp,
+        this.threadId,
+      );
 
       if (!userProfile) {
         return this.promptForName();

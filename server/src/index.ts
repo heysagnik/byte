@@ -1,9 +1,13 @@
 import http from 'http';
+import dns from 'dns';
 import { execSync } from 'child_process';
 import mongoose from 'mongoose';
 import { createApp } from './app';
 import { registerCoreTools, registerMCPTools } from './agents/manifest';
 import { env } from './config/env';
+
+// Fallback to public DNS resolvers to prevent ECONNREFUSED on MongoDB SRV DNS queries
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 function killPort(port: number): void {
   try {

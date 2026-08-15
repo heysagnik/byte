@@ -92,13 +92,59 @@ function getLocalTime(timezone: string | null): string | null {
   }
 }
 
-// ─── Name detection from message ─────────────────────────────────────────────
+// ─── Name detection & formatting from message ─────────────────────────────────────
 
-function extractNameFromMessage(message: string): string | null {
-  const match =
-    message.match(/^(?:my name is|i(?:'m| am)|call me)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/i) ??
-    message.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\.?$/);
-  return match?.[1]?.trim() ?? null;
+function formatName(str: string): string {
+  return str
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+export function extractNameFromMessage(message: string): string | null {
+  const cleaned = message.trim().replace(/^["']|["']$/g, '');
+  if (!cleaned) return null;
+
+  // 1. Explicit prefixes: "my name is...", "i am...", "i'm...", "call me...", "it's...", "this is..."
+  const prefixMatch = cleaned.match(
+    /^(?:my name is|i(?:'m|\s+am)|call me|it'?s|this is)\s+([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/i,
+  );
+  if (prefixMatch?.[1]) {
+    return formatName(prefixMatch[1]);
+  }
+
+  // 2. Direct 1–3 word name reply (case insensitive), e.g. "manas", "manas kumar", "manas."
+  const directMatch = cleaned.match(/^([A-Za-z]+(?:\s+[A-Za-z]+){0,2})[\.!\?]?$/i);
+  if (directMatch?.[1]) {
+    const raw = directMatch[1].trim();
+    const stopWords = new Set([
+      'hi',
+      'hello',
+      'hey',
+      'no',
+      'yes',
+      'none',
+      'help',
+      'ok',
+      'okay',
+      'bye',
+      'cancel',
+      'what',
+      'why',
+      'who',
+      'how',
+      'stop',
+      'test',
+      'sure',
+    ]);
+    if (!stopWords.has(raw.toLowerCase())) {
+      return formatName(raw);
+    }
+  }
+
+  return null;
 }
 
 // ─── Main resolver ────────────────────────────────────────────────────────────
@@ -107,11 +153,11 @@ export async function resolveUserProfile(
   userId: string,
   userMessage: string,
   clientIp?: string,
+  threadId?: string,
 ): Promise<UserProfile | null> {
   // Fallback for unauthenticated / test environments
   if (!userId) {
-    const envName = process.env['CALLER_NAME'] ?? null;
-    if (!envName) return null;
+    const envName = process.env['CALLER_NAME'] ?? 'User';
     return { userName: envName, location: null, timezone: null, country: null, localTime: null };
   }
 
@@ -121,14 +167,23 @@ export async function resolveUserProfile(
     if (!user) return null;
 
     // ── Name ──────────────────────────────────────────────────────────────────
-    let userName = user.name ?? null;
+    let userName = user.name?.trim() ? user.name.trim() : null;
 
     if (!userName) {
       const detectedName = extractNameFromMessage(userMessage);
       if (detectedName) {
         userName = detectedName;
-        // Persist async — don't block
-        User.findByIdAndUpdate(userId, { name: userName }).catch(() => {});
+        // Persist to MongoDB
+        await User.findByIdAndUpdate(userId, { name: userName }).catch(() => {});
+      } else if (threadId) {
+        // Fallback guard: if user was already prompted for name, assign fallback to break loop
+        const { getMessagesByThread } = await import('../services/db.service.js');
+        const messages = await getMessagesByThread(threadId);
+        const lastAgentMsg = [...messages].reverse().find(m => m.role === 'agent' && m.content);
+        if (lastAgentMsg && lastAgentMsg.content.includes("what's your name")) {
+          userName = 'User';
+          await User.findByIdAndUpdate(userId, { name: userName }).catch(() => {});
+        }
       }
     }
 
