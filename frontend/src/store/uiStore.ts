@@ -6,6 +6,10 @@ interface UIStore {
   toggleSidebar: () => void;
   isSettingsOpen: boolean;
   setSettingsOpen: (isOpen: boolean) => void;
+  /** Desktop-only rail collapse — distinct from the mobile slide-over above */
+  isSidebarCollapsed: boolean;
+  setSidebarCollapsed: (isCollapsed: boolean) => void;
+  toggleSidebarCollapsed: () => void;
 }
 
 export const useUIStore = create<UIStore>(set => ({
@@ -14,4 +18,7 @@ export const useUIStore = create<UIStore>(set => ({
   toggleSidebar: () => set(state => ({ isSidebarOpen: !state.isSidebarOpen })),
   isSettingsOpen: false,
   setSettingsOpen: isOpen => set({ isSettingsOpen: isOpen }),
+  isSidebarCollapsed: false,
+  setSidebarCollapsed: isCollapsed => set({ isSidebarCollapsed: isCollapsed }),
+  toggleSidebarCollapsed: () => set(state => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
 }));

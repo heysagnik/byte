@@ -1,5 +1,5 @@
 import { useThreadList } from '../hooks/useThreadList';
-import { Share, Pencil, Menu } from 'lucide-react';
+import { Share, Pencil, Menu, PanelLeft } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 
 interface ChatHeaderProps {
@@ -7,7 +7,7 @@ interface ChatHeaderProps {
 }
 
 export default function ChatHeader({ threadId }: ChatHeaderProps) {
-  const { toggleSidebar } = useUIStore();
+  const { toggleSidebar, isSidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
   const { threads } = useThreadList();
   const thread = threads.find(t => t.id === threadId);
   const title = thread?.title ?? '';
@@ -24,22 +24,28 @@ export default function ChatHeader({ threadId }: ChatHeaderProps) {
         <button
           onClick={toggleSidebar}
           aria-label="Toggle Menu"
-          className="lg:hidden w-7 h-7 flex items-center justify-center rounded-md transition-colors shrink-0"
+          className="lg:hidden w-7 h-7 flex items-center justify-center rounded-sm transition-colors shrink-0"
           style={{ color: 'var(--text-hint)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-hint)')}
         >
           <Menu size={16} strokeWidth={2} />
         </button>
-        {/* Thread title — Space Mono, uppercase, small-tracked */}
-        <p
-          className="text-[11px] uppercase tracking-widest truncate leading-snug"
-          style={{
-            fontFamily: 'var(--font-mono)',
-            color: 'var(--text-muted)',
-            letterSpacing: '0.12em',
-          }}
-        >
+        {/* Desktop-only expand affordance — only rendered while the rail is collapsed */}
+        {isSidebarCollapsed && (
+          <button
+            onClick={toggleSidebarCollapsed}
+            aria-label="Expand sidebar"
+            className="hidden lg:flex w-7 h-7 items-center justify-center rounded-sm transition-colors shrink-0"
+            style={{ color: 'var(--text-hint)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-hint)')}
+          >
+            <PanelLeft size={15} strokeWidth={1.75} />
+          </button>
+        )}
+        {/* Thread title — label-glyph, the "STATUS / THREAD" look */}
+        <p className="label-glyph truncate leading-snug" style={{ color: 'var(--text-muted)' }}>
           {title}
         </p>
       </div>
@@ -48,7 +54,7 @@ export default function ChatHeader({ threadId }: ChatHeaderProps) {
       <div className="flex items-center gap-1 shrink-0">
         <button
           aria-label="Rename chat"
-          className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-sm transition-colors"
           style={{ color: 'var(--text-hint)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-hint)')}
@@ -57,7 +63,7 @@ export default function ChatHeader({ threadId }: ChatHeaderProps) {
         </button>
         <button
           aria-label="Share chat"
-          className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
+          className="w-7 h-7 flex items-center justify-center rounded-sm transition-colors"
           style={{ color: 'var(--text-hint)' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-hint)')}
