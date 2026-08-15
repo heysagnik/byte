@@ -167,16 +167,14 @@ export class OrchestratorAgent {
     const systemInstruction = buildOrchestratorPrompt(ctx.user);
     const history = await this.buildHistory();
 
-    await this.reportStep({ type: 'thinking', content: 'Planning...', timestamp: Date.now() });
-
     const model = this.genAI.getGenerativeModel({
       model: env.GEMINI_MODEL,
       tools,
       systemInstruction,
     });
-    const chat = model.startChat({ history });
 
-    // Build multimodal parts if images are present
+    // Maintain full contents array using role 'user' for tool responses (bypasses SDK role: function bug)
+    const contents: Content[] = [...history];
     const firstTurnParts: Part[] = [{ text: userMessage }];
     if (images && images.length > 0) {
       for (const img of images) {
@@ -184,10 +182,10 @@ export class OrchestratorAgent {
         firstTurnParts.push({ inlineData: { mimeType: img.mimeType, data: base64 } });
       }
     }
-    const firstTurn: string | Part[] = firstTurnParts.length > 1 ? firstTurnParts : userMessage;
+    contents.push({ role: 'user', parts: firstTurnParts });
 
     let response = await geminiLimiter
-      .schedule(() => chat.sendMessage(firstTurn), this.abortSignal)
+      .schedule(() => model.generateContent({ contents }), this.abortSignal)
       .catch(err => {
         this.reportStep({
           type: 'error',
@@ -202,7 +200,13 @@ export class OrchestratorAgent {
     while (iterations < MAX_ITERATIONS) {
       if (this.abortSignal.aborted) throw new Error('cancelled');
       iterations++;
-      const parts: Part[] = response.response.candidates?.[0]?.content?.parts ?? [];
+
+      const candidateContent = response.response.candidates?.[0]?.content;
+      if (candidateContent) {
+        contents.push(candidateContent);
+      }
+
+      const parts: Part[] = candidateContent?.parts ?? [];
       const callParts = parts.filter(p => p.functionCall);
 
       if (callParts.length === 0) break;
@@ -216,8 +220,10 @@ export class OrchestratorAgent {
         timestamp: Date.now(),
       });
 
+      contents.push({ role: 'user', parts: results as Part[] });
+
       response = await geminiLimiter
-        .schedule(() => chat.sendMessage(results as Part[]), this.abortSignal)
+        .schedule(() => model.generateContent({ contents }), this.abortSignal)
         .catch(err => {
           this.reportStep({
             type: 'error',

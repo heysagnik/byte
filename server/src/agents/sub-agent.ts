@@ -5,7 +5,7 @@
  * Returns a plain string result that the orchestrator merges into its context.
  */
 
-import { GoogleGenerativeAI, Part, FunctionResponsePart } from '@google/generative-ai';
+import { GoogleGenerativeAI, Part, FunctionResponsePart, Content } from '@google/generative-ai';
 import type { Tool } from '@google/generative-ai';
 import { registry } from './registry';
 import { buildSubAgentPrompt } from './prompts';
@@ -79,15 +79,21 @@ export class SubAgent {
       tools,
       systemInstruction,
     });
-    const chat = model.startChat({ history: [] });
+    // Maintain contents array using role 'user' for tool responses (bypasses SDK role: function bug)
+    const contents: Content[] = [{ role: 'user', parts: [{ text: this.task }] }];
 
-    // Sub-agent starts fresh — no conversation history, just the task
-    let response = await geminiLimiter.schedule(() => chat.sendMessage(this.task));
+    let response = await geminiLimiter.schedule(() => model.generateContent({ contents }));
 
     let iterations = 0;
     while (iterations < MAX_ITERATIONS) {
       iterations++;
-      const parts: Part[] = response.response.candidates?.[0]?.content?.parts ?? [];
+
+      const candidateContent = response.response.candidates?.[0]?.content;
+      if (candidateContent) {
+        contents.push(candidateContent);
+      }
+
+      const parts: Part[] = candidateContent?.parts ?? [];
       const callParts = parts.filter(p => p.functionCall);
 
       if (callParts.length === 0) break;
@@ -116,7 +122,9 @@ export class SubAgent {
         return { functionResponse: { name, response: { error: errMsg } } } as FunctionResponsePart;
       });
 
-      response = await geminiLimiter.schedule(() => chat.sendMessage(results as Part[]));
+      contents.push({ role: 'user', parts: results as Part[] });
+
+      response = await geminiLimiter.schedule(() => model.generateContent({ contents }));
     }
 
     let text = '';
