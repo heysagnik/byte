@@ -10,6 +10,9 @@
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.41.1",
     "@google/generative-ai": "^0.24.1",
+    "@langchain/core": "^1.2.8",
+    "@langchain/langgraph": "^1.4.10",
+    "@langchain/openai": "^1.5.8",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",

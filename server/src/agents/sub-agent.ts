@@ -1,23 +1,18 @@
 /**
  * SubAgent — a focused, single-task agent with a restricted tool set.
- *
  * Spawned by the OrchestratorAgent to run a specific workstream in parallel.
- * Returns a plain string result that the orchestrator merges into its context.
+ * Powered by LangChain ChatOpenAI (NVIDIA NIM / OpenRouter).
  */
 
-import { GoogleGenerativeAI, Part, FunctionResponsePart, Content } from '@google/generative-ai';
-import type { Tool } from '@google/generative-ai';
+import { SystemMessage, HumanMessage, ToolMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
 import { registry } from './registry';
 import { buildSubAgentPrompt } from './prompts';
-import { geminiLimiter } from './rate-limiter';
-import { env } from '../config/env';
+import { createLLMClient } from './llm.factory';
 import type { AgentContext, SubAgentResult } from './context';
 
 const MAX_ITERATIONS = 10;
 
 export class SubAgent {
-  private genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
-
   constructor(
     private readonly agentName: string,
     private readonly task: string,
@@ -54,85 +49,69 @@ export class SubAgent {
     }
   }
 
-  private buildTools(): Tool[] {
-    // Always include web_search so sub-agents can do real-time lookups
-    const alwaysInclude = ['web_search', ...this.allowedToolNames];
-
-    return registry.allTools().filter(tool => {
-      const decls = (tool as { functionDeclarations?: Array<{ name: string }> })
-        .functionDeclarations;
-      return decls?.some(d => alwaysInclude.includes(d.name));
-    });
-  }
-
   private async _execute(): Promise<string> {
-    const tools = this.buildTools();
-    const systemInstruction = buildSubAgentPrompt(
+    const subCtx = {
+      ...this.ctx,
+      reportStep: async (step: import('./context').AgentStep) => {
+        await this.ctx.reportStep({ ...step, agentLabel: this.agentName });
+      },
+    };
+
+    const allowed = ['web_search', 'map_search', ...this.allowedToolNames];
+    const lcTools = registry.asLangChainTools(subCtx, allowed);
+
+    const systemPrompt = buildSubAgentPrompt(
       this.ctx.user,
       this.agentName,
       this.task,
       this.allowedToolNames,
     );
 
-    const model = this.genAI.getGenerativeModel({
-      model: env.GEMINI_MODEL,
-      tools,
-      systemInstruction,
-    });
-    // Maintain contents array using role 'user' for tool responses (bypasses SDK role: function bug)
-    const contents: Content[] = [{ role: 'user', parts: [{ text: this.task }] }];
+    const model = createLLMClient(0.2);
+    const modelWithTools = lcTools.length > 0 ? model.bindTools(lcTools) : model;
 
-    let response = await geminiLimiter.schedule(() => model.generateContent({ contents }));
+    const messages: BaseMessage[] = [
+      new SystemMessage(systemPrompt),
+      new HumanMessage(this.task),
+    ];
 
     let iterations = 0;
     while (iterations < MAX_ITERATIONS) {
       iterations++;
 
-      const candidateContent = response.response.candidates?.[0]?.content;
-      if (candidateContent) {
-        contents.push(candidateContent);
+      const response = await modelWithTools.invoke(messages);
+      messages.push(response);
+
+      const toolCalls = (response as AIMessage).tool_calls;
+      if (!toolCalls || toolCalls.length === 0) {
+        break;
       }
 
-      const parts: Part[] = candidateContent?.parts ?? [];
-      const callParts = parts.filter(p => p.functionCall);
-
-      if (callParts.length === 0) break;
-
-      const subCtx = {
-        ...this.ctx,
-        reportStep: async (step: import('./context').AgentStep) => {
-          // Tag sub-agent steps with the agent label
-          await this.ctx.reportStep({ ...step, agentLabel: this.agentName });
-        },
-      };
-
-      // Sub-agents run all their tool calls in parallel (no sequential constraints)
-      const settled = await Promise.allSettled(
-        callParts.map(async part => {
-          const { name, args } = part.functionCall!;
-          const result = await registry.dispatch(name, args as Record<string, unknown>, subCtx);
-          return { functionResponse: { name, response: { result } } } as FunctionResponsePart;
+      // Execute sub-agent tool calls concurrently
+      const toolResults = await Promise.all(
+        toolCalls.map(async call => {
+          try {
+            const output = await registry.dispatch(call.name, call.args, subCtx);
+            return new ToolMessage({
+              content: output,
+              tool_call_id: call.id || call.name,
+            });
+          } catch (err) {
+            const errMsg = err instanceof Error ? err.message : 'Tool execution failed';
+            return new ToolMessage({
+              content: `Error: ${errMsg}`,
+              tool_call_id: call.id || call.name,
+            });
+          }
         }),
       );
 
-      const results: FunctionResponsePart[] = settled.map((r, i) => {
-        if (r.status === 'fulfilled') return r.value;
-        const name = callParts[i].functionCall!.name;
-        const errMsg = r.reason instanceof Error ? r.reason.message : 'Tool failed';
-        return { functionResponse: { name, response: { error: errMsg } } } as FunctionResponsePart;
-      });
-
-      contents.push({ role: 'user', parts: results as Part[] });
-
-      response = await geminiLimiter.schedule(() => model.generateContent({ contents }));
+      messages.push(...toolResults);
     }
 
-    let text = '';
-    try {
-      text = response.response.text();
-    } catch {
-      /* no text part */
-    }
-    return text || 'No result returned.';
+    const lastMsg = messages[messages.length - 1];
+    return typeof lastMsg.content === 'string'
+      ? lastMsg.content
+      : JSON.stringify(lastMsg.content);
   }
 }

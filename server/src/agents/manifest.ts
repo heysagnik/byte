@@ -11,9 +11,11 @@ import path from 'path';
 import { registry } from './registry';
 import { notificationTool } from './notification.agent';
 import { searchTool } from './search.agent';
+import { mapTool } from './map.agent';
 
 export function registerCoreTools(): void {
   registry.register('web_search', searchTool);
+  registry.register('map_search', mapTool);
   registry.register('send_notification', notificationTool);
 }
 

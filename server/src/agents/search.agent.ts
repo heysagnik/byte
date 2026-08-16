@@ -1,85 +1,112 @@
 /**
- * Grounded web search tool — uses a dedicated Gemini model instance with
- * googleSearch enabled. This is the only way to use Google Search grounding
- * alongside function calling in Gemini 2.5, since the two cannot be combined
- * in the same request.
- *
- * The main agent (with functionDeclarations) calls this as a regular tool.
- * This handler spins up a one-shot Gemini call with ONLY googleSearch, then
- * returns the grounded answer as a string back to the main agent.
+ * Real-time Google Web Search tool — powered by Serper.dev Google Search API.
+ * Returns factual organic web results, titles, snippets, and source links.
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { SchemaType } from '@google/generative-ai';
+import axios from 'axios';
+import { z } from 'zod';
 import type { ToolHandler } from './registry';
-import { geminiLimiter } from './rate-limiter';
 import { env } from '../config/env';
 
-// Singleton — reuse across calls, no need to recreate
-const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+interface SerperOrganicResult {
+  title: string;
+  link: string;
+  snippet: string;
+  position?: number;
+}
 
-// Dedicated model with ONLY googleSearch — no functionDeclarations
-const searchModel = genAI.getGenerativeModel({
-  model: env.GEMINI_MODEL,
-  tools: [{ googleSearch: {} } as never],
-});
+interface SerperSearchResponse {
+  organic?: SerperOrganicResult[];
+  knowledgeGraph?: {
+    title?: string;
+    description?: string;
+    website?: string;
+    attributes?: Record<string, string>;
+  };
+  answerBox?: {
+    answer?: string;
+    snippet?: string;
+    title?: string;
+  };
+}
 
-async function groundedSearch(query: string): Promise<string> {
-  const response = await geminiLimiter.schedule(() =>
-    searchModel.generateContent(
-      `You are a research assistant. Search for factual, current information and return a concise, structured answer.\n\nQuery: ${query}`,
-    ),
-  );
+export async function groundedSearch(query: string): Promise<string> {
+  const apiKey = env.SEARCH_API_KEY || process.env['SEARCH_API_KEY'];
+  if (!apiKey) {
+    return `Search API key missing. Could not perform search for: "${query}"`;
+  }
 
-  let text = '';
   try {
-    text = response.response.text();
-  } catch {
-    /* empty */
+    const response = await axios.post<SerperSearchResponse>(
+      'https://google.serper.dev/search',
+      { q: query },
+      {
+        headers: {
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      },
+    );
+
+    const data = response.data;
+    const lines: string[] = [];
+
+    if (data.answerBox?.answer || data.answerBox?.snippet) {
+      lines.push(`Direct Answer: ${data.answerBox.answer || data.answerBox.snippet}`);
+    }
+
+    if (data.knowledgeGraph?.title) {
+      lines.push(`Knowledge Graph: ${data.knowledgeGraph.title}`);
+      if (data.knowledgeGraph.description) lines.push(data.knowledgeGraph.description);
+    }
+
+    const organic = data.organic ?? [];
+    if (organic.length > 0) {
+      lines.push('\nWeb Results:');
+      organic.slice(0, 5).forEach((item, idx) => {
+        lines.push(`[${idx + 1}] ${item.title}`);
+        lines.push(`    URL: ${item.link}`);
+        lines.push(`    Snippet: ${item.snippet}`);
+      });
+    }
+
+    if (lines.length === 0) {
+      return `No web results found for: "${query}"`;
+    }
+
+    return lines.join('\n');
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.error('[search.agent] Serper search error:', error);
+    return `Search failed for "${query}": ${error}`;
   }
-
-  if (!text) return `No results found for: "${query}"`;
-
-  // Append grounding sources if available
-  const groundingMetadata = response.response.candidates?.[0]?.groundingMetadata;
-  const chunks =
-    (
-      groundingMetadata as
-        | { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> }
-        | undefined
-    )?.groundingChunks ?? [];
-
-  if (chunks.length > 0) {
-    const sources = chunks
-      .filter(c => c.web?.uri)
-      .slice(0, 5)
-      .map((c, i) => `[${i + 1}] ${c.web!.title ?? c.web!.uri} — ${c.web!.uri}`)
-      .join('\n');
-    return `${text}\n\nSources:\n${sources}`;
-  }
-
-  return text;
 }
 
 export const searchTool: ToolHandler = {
+  name: 'web_search',
+  description:
+    'Search the web in real-time for current information. Use for: phone numbers, prices, addresses, ' +
+    'business hours, availability, reviews, news, regulations, or any factual lookup. ' +
+    'Returns grounded web search results with source links.',
+  schema: z.object({
+    query: z
+      .string()
+      .describe(
+        'Specific, targeted search query. Include location, date, entity name, or context for best results.',
+      ),
+  }),
+  // Gemini backward-compatible tools spec
   tools: {
     functionDeclarations: [
       {
         name: 'web_search',
         description:
-          'Search the web in real-time for current information. Use for: phone numbers, prices, addresses, ' +
-          'business hours, availability, reviews, news, regulations, or any factual lookup. ' +
-          'Returns a grounded answer with sources. ' +
-          'Run multiple independent searches in the SAME turn. ' +
-          'Do NOT search for information the user already provided.',
+          'Search the web in real-time for current information. Returns web results with sources.',
         parameters: {
-          type: SchemaType.OBJECT,
+          type: 'OBJECT' as never,
           properties: {
-            query: {
-              type: SchemaType.STRING,
-              description:
-                'Specific, targeted search query. Include location, date, entity name, or context for best results.',
-            },
+            query: { type: 'STRING' as never, description: 'Search query' },
           },
           required: ['query'],
         },
@@ -87,10 +114,10 @@ export const searchTool: ToolHandler = {
     ],
   },
   async handle(args, ctx) {
-    const query = args['query'] as string;
+    const query = String(args['query'] ?? '');
     await ctx.reportStep({
       type: 'searching',
-      content: `Searching: "${query}"`,
+      content: `Searching web: "${query}"`,
       timestamp: Date.now(),
     });
     const result = await groundedSearch(query);

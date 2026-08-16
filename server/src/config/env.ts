@@ -13,7 +13,12 @@ const EnvSchema = z.object({
 
   MONGODB_URI: z.string().default('mongodb://localhost:27017/byte'),
 
-  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
+  LLM_PROVIDER: z.enum(['nvidia', 'openrouter', 'gemini', 'openai']).default('nvidia'),
+  NVIDIA_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
+  LLM_MODEL: z.string().default('nvidia/nemotron-4-340b-instruct'),
+
+  GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
 
   TWILIO_ACCOUNT_SID: z.string().min(1, 'TWILIO_ACCOUNT_SID is required'),
@@ -25,6 +30,7 @@ const EnvSchema = z.object({
   ELEVENLABS_PHONE_NUMBER_ID: z.string().min(1, 'ELEVENLABS_PHONE_NUMBER_ID is required'),
 
   GROQ_API_KEY: z.string().optional(),
+  SEARCH_API_KEY: z.string().optional(),
 
   SERVER_BASE_URL: z.string().default('http://localhost:3001'),
 });

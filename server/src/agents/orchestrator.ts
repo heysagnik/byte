@@ -1,77 +1,36 @@
 /**
- * OrchestratorAgent — the master agent that plans, delegates, and synthesizes.
+ * OrchestratorAgent — master agent graph using LangChain & NVIDIA NIM / OpenRouter.
  *
  * Responsibilities:
  *  - Resolve user profile (name + location from IP)
- *  - Build conversation history for Gemini
+ *  - Build conversation history using LangChain BaseMessage objects
  *  - Expose spawn_agent tool so it can launch SubAgents in parallel
- *  - Enforce sequential constraints (phone calls, approval gates)
+ *  - Execute registered tools (web_search, map_search, phone call, approvals, notifications)
  *  - Persist steps to DB and broadcast over SSE
  */
 
 import {
-  GoogleGenerativeAI,
-  Content,
-  Part,
-  FunctionResponsePart,
-  SchemaType,
-} from '@google/generative-ai';
-import type { Tool } from '@google/generative-ai';
+  BaseMessage,
+  SystemMessage,
+  HumanMessage,
+  AIMessage,
+  ToolMessage,
+} from '@langchain/core/messages';
+import { DynamicStructuredTool, StructuredTool } from '@langchain/core/tools';
+import { z } from 'zod';
 import { registry } from './registry';
 import { SubAgent } from './sub-agent';
 import { buildOrchestratorPrompt } from './prompts';
 import { resolveUserProfile } from './user-profile';
-import { geminiLimiter } from './rate-limiter';
+import { createLLMClient } from './llm.factory';
 import { broadcastStep } from '../services/sse.service';
 import * as db from '../services/db.service';
-import { env } from '../config/env';
 import type { AgentStep, AgentContext, SubAgentResult } from './context';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const MAX_ITERATIONS = 25;
 
 // Tools that must run sequentially (one at a time)
 const SEQUENTIAL_TOOLS = new Set(['mcp_phonecall_make_phone_call', 'request_user_approval']);
-
-// ─── spawn_agent tool declaration ─────────────────────────────────────────────
-
-const SPAWN_AGENT_TOOL: Tool = {
-  functionDeclarations: [
-    {
-      name: 'spawn_agent',
-      description:
-        'Launch one or more specialized sub-agents to handle focused subtasks in parallel. ' +
-        'Each sub-agent runs independently with its own tool set and returns a result. ' +
-        'Spawn multiple agents in a SINGLE turn to run them concurrently. ' +
-        'Do NOT spawn agents for: request_user_approval (run directly in orchestrator).',
-      parameters: {
-        type: SchemaType.OBJECT,
-        properties: {
-          agent_name: {
-            type: SchemaType.STRING,
-            description:
-              'Short human-readable label shown in the UI. E.g. "Research Agent", "Call Agent", "Draft Agent".',
-          },
-          task: {
-            type: SchemaType.STRING,
-            description:
-              'Complete, self-contained instruction for the sub-agent. ' +
-              'Include all context it needs — it has no access to the conversation history.',
-          },
-          tools: {
-            type: SchemaType.ARRAY,
-            items: { type: SchemaType.STRING },
-            description:
-              'Tool names the sub-agent may use. Available: "mcp_phonecall_make_phone_call", "send_notification". ' +
-              'Google Search grounding is always available. Omit for research-only agents.',
-          },
-        },
-        required: ['agent_name', 'task'],
-      },
-    },
-  ],
-};
 
 // ─── Per-thread cancel registry ───────────────────────────────────────────────
 
@@ -93,7 +52,6 @@ export function isThreadRunning(threadId: string): boolean {
 export class OrchestratorAgent {
   private steps: AgentStep[] = [];
   private stepSeq = 0;
-  private genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
   private abortSignal!: AbortSignal;
 
   constructor(
@@ -163,37 +121,33 @@ export class OrchestratorAgent {
     ctx: AgentContext,
     images?: Array<{ dataUrl: string; mimeType: string; name: string }>,
   ): Promise<string> {
-    const tools = this.buildTools();
-    const systemInstruction = buildOrchestratorPrompt(ctx.user);
+    const registeredTools = registry.asLangChainTools(ctx);
+    const spawnTool = this.createSpawnAgentTool(ctx);
+    const allTools: StructuredTool[] = [spawnTool, ...registeredTools];
+
+    const systemPrompt = buildOrchestratorPrompt(ctx.user);
     const history = await this.buildHistory();
 
-    const model = this.genAI.getGenerativeModel({
-      model: env.GEMINI_MODEL,
-      tools,
-      systemInstruction,
-    });
+    const model = createLLMClient(0.2);
+    const modelWithTools = model.bindTools(allTools);
 
-    // Maintain full contents array using role 'user' for tool responses (bypasses SDK role: function bug)
-    const contents: Content[] = [...history];
-    const firstTurnParts: Part[] = [{ text: userMessage }];
+    let contentInput: string | Array<Record<string, unknown>> = userMessage;
     if (images && images.length > 0) {
+      const parts: Array<Record<string, unknown>> = [{ type: 'text', text: userMessage }];
       for (const img of images) {
-        const base64 = img.dataUrl.split(',')[1] ?? img.dataUrl;
-        firstTurnParts.push({ inlineData: { mimeType: img.mimeType, data: base64 } });
-      }
-    }
-    contents.push({ role: 'user', parts: firstTurnParts });
-
-    let response = await geminiLimiter
-      .schedule(() => model.generateContent({ contents }), this.abortSignal)
-      .catch(err => {
-        this.reportStep({
-          type: 'error',
-          content: `AI unreachable: ${String(err)}`,
-          timestamp: Date.now(),
+        parts.push({
+          type: 'image_url',
+          image_url: { url: img.dataUrl },
         });
-        throw err;
-      });
+      }
+      contentInput = parts;
+    }
+
+    const messages: BaseMessage[] = [
+      new SystemMessage(systemPrompt),
+      ...history,
+      new HumanMessage({ content: contentInput as unknown as string }),
+    ];
 
     let iterations = 0;
 
@@ -201,17 +155,15 @@ export class OrchestratorAgent {
       if (this.abortSignal.aborted) throw new Error('cancelled');
       iterations++;
 
-      const candidateContent = response.response.candidates?.[0]?.content;
-      if (candidateContent) {
-        contents.push(candidateContent);
+      const response = await modelWithTools.invoke(messages);
+      messages.push(response);
+
+      const toolCalls = (response as AIMessage).tool_calls;
+      if (!toolCalls || toolCalls.length === 0) {
+        break;
       }
 
-      const parts: Part[] = candidateContent?.parts ?? [];
-      const callParts = parts.filter(p => p.functionCall);
-
-      if (callParts.length === 0) break;
-
-      const results = await this.dispatchTools(callParts, ctx);
+      const results = await this.dispatchToolCalls(toolCalls, ctx);
 
       if (this.abortSignal.aborted) throw new Error('cancelled');
       await this.reportStep({
@@ -220,18 +172,7 @@ export class OrchestratorAgent {
         timestamp: Date.now(),
       });
 
-      contents.push({ role: 'user', parts: results as Part[] });
-
-      response = await geminiLimiter
-        .schedule(() => model.generateContent({ contents }), this.abortSignal)
-        .catch(err => {
-          this.reportStep({
-            type: 'error',
-            content: `AI error: ${String(err)}`,
-            timestamp: Date.now(),
-          });
-          throw err;
-        });
+      messages.push(...results);
     }
 
     if (iterations >= MAX_ITERATIONS) {
@@ -242,103 +183,94 @@ export class OrchestratorAgent {
       });
     }
 
-    let finalText = '';
-    try {
-      finalText = response.response.text();
-    } catch {
-      /* empty */
-    }
+    const lastMsg = messages[messages.length - 1];
+    const finalText = typeof lastMsg.content === 'string' ? lastMsg.content : 'Task completed.';
 
     await this.finalize(finalText || 'Task completed.');
     return finalText || 'Task completed.';
   }
 
-  // ── Tool dispatch ───────────────────────────────────────────────────────────
+  // ── Tool dispatching ────────────────────────────────────────────────────────
 
-  private async dispatchTools(
-    callParts: Part[],
+  private async dispatchToolCalls(
+    toolCalls: Array<{ name: string; args: Record<string, unknown>; id?: string }>,
     ctx: AgentContext,
-  ): Promise<FunctionResponsePart[]> {
-    const hasSequential = callParts.some(p => SEQUENTIAL_TOOLS.has(p.functionCall!.name));
+  ): Promise<ToolMessage[]> {
+    const hasSequential = toolCalls.some(c => SEQUENTIAL_TOOLS.has(c.name));
 
     if (hasSequential) {
-      return this.dispatchSequential(callParts, ctx);
-    }
-
-    const spawnCalls = callParts.filter(p => p.functionCall!.name === 'spawn_agent');
-    const regularCalls = callParts.filter(p => p.functionCall!.name !== 'spawn_agent');
-
-    const [spawnResults, regularResults] = await Promise.all([
-      spawnCalls.length > 0 ? this.dispatchSubAgents(spawnCalls, ctx) : Promise.resolve([]),
-      regularCalls.length > 0
-        ? Promise.all(regularCalls.map(p => this.callTool(p, ctx)))
-        : Promise.resolve([]),
-    ]);
-
-    return [...spawnResults, ...regularResults];
-  }
-
-  private async dispatchSequential(
-    callParts: Part[],
-    ctx: AgentContext,
-  ): Promise<FunctionResponsePart[]> {
-    const results: FunctionResponsePart[] = [];
-    for (const part of callParts) {
-      if (part.functionCall!.name === 'spawn_agent') {
-        const r = await this.dispatchSubAgents([part], ctx);
-        results.push(...r);
-      } else {
-        results.push(await this.callTool(part, ctx));
+      const results: ToolMessage[] = [];
+      for (const call of toolCalls) {
+        results.push(await this.executeSingleToolCall(call, ctx));
       }
+      return results;
     }
-    return results;
+
+    // Parallel tool dispatch
+    return Promise.all(toolCalls.map(call => this.executeSingleToolCall(call, ctx)));
   }
 
-  /** Run all spawn_agent calls concurrently — each becomes a SubAgent */
-  private async dispatchSubAgents(
-    spawnCalls: Part[],
+  private async executeSingleToolCall(
+    call: { name: string; args: Record<string, unknown>; id?: string },
     ctx: AgentContext,
-  ): Promise<FunctionResponsePart[]> {
-    const agents = spawnCalls.map(part => {
-      const args = part.functionCall!.args as Record<string, unknown>;
-      const agentName = String(args['agent_name'] ?? 'Sub-Agent');
-      const task = String(args['task'] ?? '');
-      const tools = Array.isArray(args['tools']) ? (args['tools'] as unknown[]).map(String) : [];
-      return { part, agent: new SubAgent(agentName, task, tools, ctx) };
-    });
+  ): Promise<ToolMessage> {
+    const callId = call.id || call.name;
 
-    const results: SubAgentResult[] = await Promise.all(agents.map(({ agent }) => agent.run()));
+    if (call.name === 'spawn_agent') {
+      const agentName = String(call.args['agent_name'] ?? 'Sub-Agent');
+      const task = String(call.args['task'] ?? '');
+      const tools = Array.isArray(call.args['tools']) ? (call.args['tools'] as unknown[]).map(String) : [];
 
-    return results.map((result, i) => {
-      const name = spawnCalls[i].functionCall!.name;
-      const response = result.error
-        ? { error: result.error, agent: result.agentName }
-        : { result: `[${result.agentName}]\n${result.result}` };
-      return { functionResponse: { name, response } } as FunctionResponsePart;
-    });
-  }
+      const subAgent = new SubAgent(agentName, task, tools, ctx);
+      const res: SubAgentResult = await subAgent.run();
 
-  /** Dispatch a single tool call (registry) */
-  private async callTool(part: Part, ctx: AgentContext): Promise<FunctionResponsePart> {
-    const { name, args } = part.functionCall!;
+      const outputText = res.error
+        ? `Error in ${res.agentName}: ${res.error}`
+        : `[${res.agentName}]\n${res.result}`;
+
+      return new ToolMessage({ content: outputText, tool_call_id: callId });
+    }
+
     try {
-      const result = await registry.dispatch(name, args as Record<string, unknown>, ctx);
-      return { functionResponse: { name, response: { result } } };
+      const result = await registry.dispatch(call.name, call.args, ctx);
+      return new ToolMessage({ content: result, tool_call_id: callId });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Tool call failed';
       await this.reportStep({
         type: 'error',
-        content: `${name}: ${errMsg}`,
+        content: `${call.name}: ${errMsg}`,
         timestamp: Date.now(),
       });
-      return { functionResponse: { name, response: { error: errMsg } } };
+      return new ToolMessage({ content: `Error: ${errMsg}`, tool_call_id: callId });
     }
   }
 
-  // ── Tool list ───────────────────────────────────────────────────────────────
+  // ── Dynamic spawn_agent tool declaration ─────────────────────────────────────
 
-  private buildTools(): Tool[] {
-    return [SPAWN_AGENT_TOOL, ...registry.allTools()];
+  private createSpawnAgentTool(ctx: AgentContext): StructuredTool {
+    return new DynamicStructuredTool({
+      name: 'spawn_agent',
+      description:
+        'Launch one or more specialized sub-agents to handle focused subtasks in parallel. ' +
+        'Each sub-agent runs independently with its own tool set and returns a result. ' +
+        'Spawn multiple agents in a SINGLE turn to run them concurrently. ' +
+        'Do NOT spawn agents for: request_user_approval (run directly in orchestrator).',
+      schema: z.object({
+        agent_name: z
+          .string()
+          .describe('Short human-readable label shown in UI (e.g. "Research Agent", "Map Agent").'),
+        task: z.string().describe('Complete, self-contained instruction for the sub-agent.'),
+        tools: z
+          .array(z.string())
+          .optional()
+          .describe('Optional allowed tool names for the sub-agent (e.g. "web_search", "map_search").'),
+      }),
+      func: async (args: { agent_name: string; task: string; tools?: string[] }) => {
+        const subAgent = new SubAgent(args.agent_name, args.task, args.tools ?? [], ctx);
+        const res = await subAgent.run();
+        return res.error ? `Error: ${res.error}` : res.result;
+      },
+    });
   }
 
   // ── Finalization ────────────────────────────────────────────────────────────
@@ -400,10 +332,10 @@ export class OrchestratorAgent {
 
   // ── Conversation history ────────────────────────────────────────────────────
 
-  private async buildHistory(): Promise<Content[]> {
+  private async buildHistory(): Promise<BaseMessage[]> {
     try {
       const messages = await db.getMessagesByThread(this.threadId);
-      const raw: Content[] = [];
+      const history: BaseMessage[] = [];
 
       for (const msg of messages) {
         if (this.agentMessageId && msg._id.toString() === this.agentMessageId) continue;
@@ -411,21 +343,13 @@ export class OrchestratorAgent {
         if (!msg.content) continue;
 
         if (msg.role === 'user') {
-          raw.push({ role: 'user', parts: [{ text: msg.content }] });
+          history.push(new HumanMessage(msg.content));
         } else if (msg.role === 'agent') {
-          raw.push({ role: 'model', parts: [{ text: msg.content }] });
+          history.push(new AIMessage(msg.content));
         }
       }
 
-      // Gemini requires strict user/model alternation
-      const deduped: Content[] = [];
-      for (const turn of raw) {
-        if (deduped.length > 0 && deduped.at(-1)!.role === turn.role) continue;
-        deduped.push(turn);
-      }
-      while (deduped.length > 0 && deduped.at(-1)!.role === 'model') deduped.pop();
-
-      return deduped;
+      return history;
     } catch {
       return [];
     }

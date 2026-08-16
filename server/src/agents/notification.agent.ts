@@ -1,4 +1,4 @@
-import { SchemaType } from '@google/generative-ai';
+import { z } from 'zod';
 import type { ToolHandler } from './registry';
 import * as db from '../services/db.service';
 
@@ -20,27 +20,27 @@ export class NotificationAgent {
 }
 
 export const notificationTool: ToolHandler = {
+  name: 'send_notification',
+  description:
+    'Send a status update to the user thread without pausing execution. ' +
+    'Use between steps to keep the user informed. Be specific — name what was found, done, or failed. ' +
+    'Types: "info" = in-progress update, "success" = step or task complete, "error" = something failed, "waiting" = paused for external event.',
+  schema: z.object({
+    message: z.string().describe('The message content. Use markdown for formatting when helpful.'),
+    type: z
+      .enum(['info', 'success', 'error', 'waiting'])
+      .describe('Determines how the message is displayed in the UI.'),
+  }),
   tools: {
     functionDeclarations: [
       {
         name: 'send_notification',
-        description:
-          'Send a status update to the user thread without pausing execution. ' +
-          'Use between steps to keep the user informed. Be specific — name what was found, done, or failed. ' +
-          'Types: "info" = in-progress update, "success" = step or task complete, "error" = something failed, "waiting" = paused for external event.',
+        description: 'Send a status update to the user thread without pausing execution.',
         parameters: {
-          type: SchemaType.OBJECT,
+          type: 'OBJECT' as never,
           properties: {
-            message: {
-              type: SchemaType.STRING,
-              description: 'The message content. Use markdown for formatting when helpful.',
-            },
-            type: {
-              type: SchemaType.STRING,
-              format: 'enum',
-              enum: ['info', 'success', 'error', 'waiting'],
-              description: 'Determines how the message is displayed in the UI.',
-            },
+            message: { type: 'STRING' as never, description: 'Message' },
+            type: { type: 'STRING' as never, description: 'Type' },
           },
           required: ['message', 'type'],
         },

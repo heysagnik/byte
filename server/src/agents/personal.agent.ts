@@ -6,56 +6,33 @@
 
 import { registerCoreTools } from './manifest';
 import { registry } from './registry';
-import { SchemaType } from '@google/generative-ai';
+import { z } from 'zod';
 import type { AgentContext } from './context';
 import * as db from '../services/db.service';
 
-// Register core tools (web_search, send_notification)
+// Register core tools (web_search, map_search, send_notification)
 registerCoreTools();
+
+const OptionSchema = z.object({
+  label: z.string().describe('Short option name.'),
+  details: z.string().describe('Full specifics — time, location, terms, what happens next.'),
+  price: z.string().optional().describe('Cost if applicable.'),
+  recommended: z.boolean().optional().describe('True for the option you recommend (at most one).'),
+});
 
 // Register request_user_approval here — orchestrator-only tool, not available to sub-agents
 registry.register('request_user_approval', {
-  tools: {
-    functionDeclarations: [
-      {
-        name: 'request_user_approval',
-        description:
-          'Pause execution and present the user with 2–4 options to choose from. ' +
-          'Use ONLY when a commitment is about to be made and you genuinely cannot determine which option the user would prefer. ' +
-          'Do NOT use for check-ins, progress updates, or asking for missing information.',
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {
-            summary: {
-              type: SchemaType.STRING,
-              description:
-                'What was found and what decision needs to be made. Include key tradeoffs.',
-            },
-            options: {
-              type: SchemaType.ARRAY,
-              items: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  label: { type: SchemaType.STRING, description: 'Short option name.' },
-                  details: {
-                    type: SchemaType.STRING,
-                    description: 'Full specifics — time, location, terms, what happens next.',
-                  },
-                  price: { type: SchemaType.STRING, description: 'Cost if applicable.' },
-                  recommended: {
-                    type: SchemaType.BOOLEAN,
-                    description: 'True for the option you recommend (at most one).',
-                  },
-                },
-                required: ['label', 'details'],
-              },
-            },
-          },
-          required: ['summary', 'options'],
-        },
-      },
-    ],
-  },
+  name: 'request_user_approval',
+  description:
+    'Pause execution and present the user with 2–4 options to choose from. ' +
+    'Use ONLY when a commitment is about to be made and you genuinely cannot determine which option the user would prefer. ' +
+    'Do NOT use for check-ins, progress updates, or asking for missing information.',
+  schema: z.object({
+    summary: z
+      .string()
+      .describe('What was found and what decision needs to be made. Include key tradeoffs.'),
+    options: z.array(OptionSchema).describe('Array of 2 to 4 distinct options.'),
+  }),
   handle: async (args: Record<string, unknown>, ctx: AgentContext) => {
     const { waitForApproval } = await import('../services/approval.service.js');
 
