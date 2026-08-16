@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
 import { Badge } from './ui/badge';
 import { api } from '../lib/api';
+import { parseCardsFromText } from '../lib/cardParser';
+import { PlaceCardGrid } from './cards/PlaceCardGrid';
+import { CallReportCard } from './cards/CallReportCard';
+import { SourceCardGrid } from './cards/SourceCardGrid';
 
 interface AgentStep {
   type:
@@ -52,24 +56,15 @@ const stepLabel: Record<string, string> = {
   agent_done: 'Agent',
 };
 
-// What to show in the accordion trigger while the step is live
 const liveLabel: Record<string, string> = {
   thinking: 'Thinking…',
-  searching: 'Searching the web…',
+  searching: 'Searching the web & maps…',
   calling: 'On a call…',
   result: 'Processing results…',
   waiting_approval: 'Waiting for Approval…',
   error: 'Error',
   agent_spawn: 'Spawning agents…',
   agent_done: 'Agent completed',
-};
-
-const notifColor: Record<string, 'default' | 'success' | 'warning' | 'danger'> = {
-  info: 'default',
-  success: 'success',
-  error: 'danger',
-  waiting: 'warning',
-  waiting_approval: 'warning',
 };
 
 const notifLabel: Record<string, string> = {
@@ -102,7 +97,6 @@ export default function AgentStepCard({
     setExpandedValue(isDone ? '' : 'steps');
   }, [isDone]);
 
-  // Merge steps + notifications into one chronological timeline
   const timeline: TimelineItem[] = [
     ...(metadata.steps ?? []).map(s => ({ kind: 'step' as const, data: s, time: s.timestamp })),
     ...notifications.map(n => ({
@@ -114,7 +108,6 @@ export default function AgentStepCard({
 
   if (timeline.length === 0 && metadata.type !== 'waiting_approval') return null;
 
-  // Header: when running, reflect the last active step type so the user always knows what's happening
   const lastItem = timeline[timeline.length - 1];
   const currentLiveLabel = (() => {
     if (metadata.type === 'waiting_approval') return 'Waiting for Approval…';
@@ -146,7 +139,6 @@ export default function AgentStepCard({
               letterSpacing: '0.04em',
             }}
           >
-            {/* Glyph-style segmented meter while agent is active */}
             {!isDone && (
               <span className="glyph-meter shrink-0" aria-hidden="true">
                 <span />
@@ -161,7 +153,7 @@ export default function AgentStepCard({
             <>
               {timeline.length > 0 && (
                 <div
-                  className="mt-1 ml-2 pl-3.5 flex flex-col gap-y-2"
+                  className="mt-1 ml-2 pl-3.5 flex flex-col gap-y-2.5"
                   style={{ borderLeft: '1px dashed var(--border)' }}
                 >
                   {timeline.map((item, i) => {
@@ -179,8 +171,11 @@ export default function AgentStepCard({
                         ? step.agentLabel
                         : (stepLabel[step.type] ?? step.type);
                       const isAgentStep = step.type === 'agent_spawn' || step.type === 'agent_done';
+
+                      const parsed = parseCardsFromText(step.content);
+
                       return (
-                        <div key={i} className="flex flex-col gap-0.5 animate-step-in">
+                        <div key={i} className="flex flex-col gap-1 animate-step-in">
                           {showChip && (
                             <Badge
                               className={`h-[20px] px-1 rounded-sm gap-1 text-[11px] font-medium transition-opacity whitespace-nowrap w-fit border-0 ${isLast ? 'opacity-100' : 'opacity-50'}`}
@@ -196,21 +191,29 @@ export default function AgentStepCard({
                               {chipLabel}
                             </Badge>
                           )}
-                          <div
-                            className={`text-[14px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
-                            style={{
-                              color: showChip ? 'var(--text-primary)' : 'var(--text-muted)',
-                              fontFamily: 'var(--font-body)',
-                            }}
-                          >
-                            {step.content}
-                            {isLast && (
-                              <span
-                                className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse"
-                                style={{ background: 'var(--accent)' }}
-                              />
-                            )}
-                          </div>
+
+                          {parsed.cleanText && (
+                            <div
+                              className={`text-[14px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
+                              style={{
+                                color: showChip ? 'var(--text-primary)' : 'var(--text-muted)',
+                                fontFamily: 'var(--font-body)',
+                              }}
+                            >
+                              {parsed.cleanText}
+                              {isLast && (
+                                <span
+                                  className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse"
+                                  style={{ background: 'var(--accent)' }}
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          {/* Render dynamic cards inside step timelines if extracted */}
+                          {parsed.places.length > 0 && <PlaceCardGrid places={parsed.places} />}
+                          {parsed.callReport && <CallReportCard report={parsed.callReport} />}
+                          {parsed.sources.length > 0 && <SourceCardGrid sources={parsed.sources} />}
                         </div>
                       );
                     }
@@ -218,8 +221,10 @@ export default function AgentStepCard({
                     // Notification item
                     const notif = item.data;
                     const label = notifLabel[notif.type] ?? 'Update';
+                    const parsedNotif = parseCardsFromText(notif.content);
+
                     return (
-                      <div key={i} className="flex flex-col gap-0.5 animate-step-in">
+                      <div key={i} className="flex flex-col gap-1 animate-step-in">
                         <Badge
                           className={`h-[20px] px-1 rounded-sm text-[11px] font-medium transition-opacity whitespace-nowrap w-fit border-0 ${isLast ? 'opacity-100' : 'opacity-50'}`}
                           style={{
@@ -230,18 +235,23 @@ export default function AgentStepCard({
                         >
                           {label}
                         </Badge>
-                        <div
-                          className={`text-[14px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
-                          style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
-                        >
-                          {notif.content}
-                          {isLast && (
-                            <span
-                              className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse"
-                              style={{ background: 'var(--accent)' }}
-                            />
-                          )}
-                        </div>
+                        {parsedNotif.cleanText && (
+                          <div
+                            className={`text-[14px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
+                            style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
+                          >
+                            {parsedNotif.cleanText}
+                            {isLast && (
+                              <span
+                                className="inline-block w-[1.5px] h-[1em] ml-1 align-middle animate-pulse"
+                                style={{ background: 'var(--accent)' }}
+                              />
+                            )}
+                          </div>
+                        )}
+                        {parsedNotif.places.length > 0 && <PlaceCardGrid places={parsedNotif.places} />}
+                        {parsedNotif.callReport && <CallReportCard report={parsedNotif.callReport} />}
+                        {parsedNotif.sources.length > 0 && <SourceCardGrid sources={parsedNotif.sources} />}
                       </div>
                     );
                   })}
@@ -291,7 +301,6 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
       return;
     }
 
-    // Brief confirmation flash, then fade out
     setConfirmed(true);
     setTimeout(() => setVisible(false), 900);
   };
@@ -307,7 +316,6 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
         background: 'var(--bg-elevated)',
       }}
     >
-      {/* Header */}
       <div
         className="px-4 pt-4 pb-3 flex items-center gap-2"
         style={{ borderBottom: '1px solid var(--border)' }}
@@ -328,7 +336,6 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
         </span>
       </div>
 
-      {/* Summary */}
       {summary && (
         <p
           className="px-4 pt-3 text-[14px] leading-[1.6]"
@@ -338,7 +345,6 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
         </p>
       )}
 
-      {/* Options */}
       <div className="p-3 flex flex-col gap-2">
         {options.map((option, i) => {
           const isSelected = selected === i;
@@ -356,22 +362,10 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
                 border: `1.5px solid ${isSelected ? 'var(--text-primary)' : 'var(--border)'}`,
                 opacity: isOther ? 0.35 : 1,
                 cursor: selected !== null ? 'default' : 'pointer',
-                transform: isSelected ? 'scale(1)' : undefined,
-              }}
-              onMouseEnter={e => {
-                if (selected !== null) return;
-                (e.currentTarget as HTMLElement).style.borderColor = 'var(--text-primary)';
-                (e.currentTarget as HTMLElement).style.background = 'var(--bg-page)';
-              }}
-              onMouseLeave={e => {
-                if (selected !== null) return;
-                (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
-                (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)';
               }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
-                  {/* Selection indicator */}
                   <span
                     className="shrink-0 w-[16px] h-[16px] rounded-full flex items-center justify-center transition-all duration-200"
                     style={{

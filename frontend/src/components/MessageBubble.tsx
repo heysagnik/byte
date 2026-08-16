@@ -2,6 +2,10 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import AgentStepCard, { type NotificationMessage } from './AgentStepCard';
 import type { Message } from '../hooks/useThread';
+import { parseCardsFromText } from '../lib/cardParser';
+import { PlaceCardGrid } from './cards/PlaceCardGrid';
+import { CallReportCard } from './cards/CallReportCard';
+import { SourceCardGrid } from './cards/SourceCardGrid';
 
 interface MessageBubbleProps {
   message: Message;
@@ -19,7 +23,7 @@ const markdownComponents: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="underline underline-offset-2"
+      className="underline underline-offset-2 hover:opacity-80 transition-opacity"
       style={{ color: 'var(--accent)' }}
     >
       {children}
@@ -107,7 +111,6 @@ export default function MessageBubble({
     return (
       <div className="flex justify-end py-1.5">
         <div className="max-w-[90%] md:max-w-[78%] flex flex-col items-end gap-1.5">
-          {/* Image attachments */}
           {message.images && message.images.length > 0 && (
             <div className="flex flex-wrap gap-1.5 justify-end">
               {message.images.map((img, i) => (
@@ -125,7 +128,6 @@ export default function MessageBubble({
               ))}
             </div>
           )}
-          {/* Text bubble — only if there's text */}
           {message.content && (
             <div
               className="rounded-md px-4 py-2.5 text-[15px] leading-relaxed"
@@ -143,7 +145,7 @@ export default function MessageBubble({
     );
   }
 
-  // ── Byte logo mark — shown inline before agent message content ────────────
+  // ── Byte logo mark ────────────────────────────────────────────────────────
   const ByteMark = () => (
     <div className="flex items-center gap-2 mb-2">
       <div
@@ -162,6 +164,8 @@ export default function MessageBubble({
     </div>
   );
 
+  const parsed = parseCardsFromText(message.content || '');
+
   // ── Agent message ─────────────────────────────────────────────────────────
   return (
     <div className="py-1.5">
@@ -172,18 +176,27 @@ export default function MessageBubble({
           isRunning={isThinking}
           notifications={notifications}
         />
-        {message.content && (
+        {(parsed.cleanText || parsed.places.length > 0 || parsed.callReport || parsed.sources.length > 0) && (
           <div>
             <ByteMark />
-            <div
-              className="text-[15px] leading-[1.7] max-w-full"
-              style={{
-                color: 'var(--text-primary)',
-                fontFamily: 'var(--font-body)',
-              }}
-            >
-              <RenderText text={message.content} />
-            </div>
+
+            {/* Rich Cards Section */}
+            {parsed.places.length > 0 && <PlaceCardGrid places={parsed.places} />}
+            {parsed.callReport && <CallReportCard report={parsed.callReport} />}
+            {parsed.sources.length > 0 && <SourceCardGrid sources={parsed.sources} />}
+
+            {/* Cleaned Executive Text */}
+            {parsed.cleanText && (
+              <div
+                className="text-[15px] leading-[1.7] max-w-full mt-1.5"
+                style={{
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                <RenderText text={parsed.cleanText} />
+              </div>
+            )}
           </div>
         )}
       </div>

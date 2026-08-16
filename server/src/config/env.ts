@@ -16,7 +16,7 @@ const EnvSchema = z.object({
   LLM_PROVIDER: z.enum(['nvidia', 'openrouter', 'gemini', 'openai']).default('nvidia'),
   NVIDIA_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
-  LLM_MODEL: z.string().default('nvidia/nemotron-4-340b-instruct'),
+  LLM_MODEL: z.string().default('nvidia/nemotron-3-ultra-550b-a55b'),
 
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
