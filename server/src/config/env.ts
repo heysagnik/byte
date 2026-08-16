@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Always load top-level root .env file from workspace root
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const EnvSchema = z.object({
   PORT: z.string().default('3001'),
