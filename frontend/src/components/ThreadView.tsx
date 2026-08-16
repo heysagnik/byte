@@ -7,6 +7,8 @@ interface ThreadViewProps {
   messages: Message[];
   threadId: string;
   onlyLatest?: boolean;
+  /** Bottom padding reserved for the floating input bar, tracks its real height */
+  bottomInset?: number;
 }
 
 interface Turn {
@@ -55,7 +57,7 @@ function buildTurns(messages: Message[]): Turn[] {
   return turns;
 }
 
-export default function ThreadView({ messages, threadId, onlyLatest }: ThreadViewProps) {
+export default function ThreadView({ messages, threadId, onlyLatest, bottomInset }: ThreadViewProps) {
   const lastTurnRef = useRef<HTMLDivElement>(null);
 
   const allTurns = buildTurns(messages);
@@ -68,15 +70,21 @@ export default function ThreadView({ messages, threadId, onlyLatest }: ThreadVie
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-sm text-[--muted]">
-        Send a message to get started
+      <div className="dot-grid-bg flex-1 flex flex-col items-center justify-center gap-2 text-base text-[--muted]">
+        <span className="font-dot text-[13px] opacity-40" style={{ color: 'var(--text-hint)' }}>
+          N00
+        </span>
+        <span>Send a message to get started</span>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className={`${CONTENT_WIDTH} mx-auto px-4 md:px-6 py-6 w-full`}>
+    <div className="no-scrollbar flex-1 overflow-y-auto">
+      <div
+        className={`${CONTENT_WIDTH} mx-auto px-4 md:px-6 pt-6 w-full`}
+        style={{ paddingBottom: bottomInset ?? 112 }}
+      >
         {turns.map((turn, i) => {
           const isLast = i === turns.length - 1;
           // Still thinking if placeholder exists, has no final response yet,

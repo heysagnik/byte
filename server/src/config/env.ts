@@ -14,7 +14,7 @@ const EnvSchema = z.object({
   MONGODB_URI: z.string().default('mongodb://localhost:27017/byte'),
 
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
-  GEMINI_MODEL: z.string().default('gemini-2.5-pro'),
+  GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
 
   TWILIO_ACCOUNT_SID: z.string().min(1, 'TWILIO_ACCOUNT_SID is required'),
   TWILIO_AUTH_TOKEN: z.string().min(1, 'TWILIO_AUTH_TOKEN is required'),
@@ -34,17 +34,11 @@ export type Env = z.infer<typeof EnvSchema>;
 function loadEnv(): Env {
   const result = EnvSchema.safeParse(process.env);
   if (!result.success) {
-    const missing = result.error.errors.map(e => `  ${e.path.join('.')}: ${e.message}`).join('\n');
+    const missing = result.error.issues.map(e => `  ${e.path.join('.')}: ${e.message}`).join('\n');
     console.error(`[env] Missing or invalid environment variables:\n${missing}`);
+    process.exit(1);
   }
-  return (
-    result.success
-      ? result.data
-      : EnvSchema.parse({
-          ...process.env,
-          JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-change-me',
-        })
-  ) as Env;
+  return result.data;
 }
 
 export const env = loadEnv();

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Chip, Accordion } from '@heroui/react';
-import type { Selection } from '@heroui/react';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './ui/accordion';
+import { Badge } from './ui/badge';
 import { api } from '../lib/api';
 
 interface AgentStep {
@@ -93,13 +93,13 @@ export default function AgentStepCard({
   isRunning,
   notifications = [],
 }: AgentStepCardProps) {
-  const [expandedKeys, setExpandedKeys] = useState<Selection>(new Set(['steps']));
+  const [expandedValue, setExpandedValue] = useState<string>('steps');
 
   const isDone =
     isRunning === undefined ? metadata.type === 'done' || metadata.type === 'final' : !isRunning;
 
   useEffect(() => {
-    setExpandedKeys(isDone ? new Set([]) : new Set(['steps']));
+    setExpandedValue(isDone ? '' : 'steps');
   }, [isDone]);
 
   // Merge steps + notifications into one chronological timeline
@@ -128,34 +128,41 @@ export default function AgentStepCard({
 
   return (
     <div className="space-y-2">
-      <Accordion className="px-0" expandedKeys={expandedKeys} onExpandedChange={setExpandedKeys}>
-        <Accordion.Item key="steps" id="steps">
-          <Accordion.Heading>
-            <Accordion.Trigger
-              className="py-1.5 px-2 rounded-lg outline-none transition-colors max-w-full flex items-center gap-2 w-fit"
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                color: 'var(--text-muted)',
-                letterSpacing: '0.04em',
-              }}
-            >
-              {/* Pulsing dot while agent is active */}
-              {!isDone && (
-                <span
-                  className="inline-block w-1.5 h-1.5 rounded-full shrink-0 animate-accent-ping"
-                  style={{ background: 'var(--accent)' }}
-                />
-              )}
-              {headerText}
-            </Accordion.Trigger>
-          </Accordion.Heading>
-          <Accordion.Panel>
-            <Accordion.Body className="pb-2 pt-1 px-1">
+      <Accordion
+        type="single"
+        collapsible
+        className="px-0"
+        value={expandedValue}
+        onValueChange={setExpandedValue}
+      >
+        <AccordionItem value="steps" className="border-b-0">
+          <AccordionTrigger
+            showChevron={false}
+            className="py-1.5 px-2 rounded-md outline-none transition-colors max-w-full !flex-none inline-flex items-center gap-2 w-fit"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '13px',
+              color: 'var(--text-primary)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {/* Glyph-style segmented meter while agent is active */}
+            {!isDone && (
+              <span className="glyph-meter shrink-0" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+              </span>
+            )}
+            {headerText}
+          </AccordionTrigger>
+          <AccordionContent className="pb-2 pt-1 px-1">
+            <>
               {timeline.length > 0 && (
                 <div
                   className="mt-1 ml-2 pl-3.5 flex flex-col gap-y-2"
-                  style={{ borderLeft: '1px solid var(--border)' }}
+                  style={{ borderLeft: '1px dashed var(--border)' }}
                 >
                   {timeline.map((item, i) => {
                     const isLast = !isDone && i === timeline.length - 1;
@@ -175,21 +182,22 @@ export default function AgentStepCard({
                       return (
                         <div key={i} className="flex flex-col gap-0.5 animate-step-in">
                           {showChip && (
-                            <Chip
-                              size="sm"
-                              variant="soft"
-                              className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap w-fit ${isLast ? 'opacity-100' : 'opacity-50'}`}
+                            <Badge
+                              className={`h-[20px] px-1 rounded-sm gap-1 text-[11px] font-medium transition-opacity whitespace-nowrap w-fit border-0 ${isLast ? 'opacity-100' : 'opacity-50'}`}
                               style={{
                                 background: isAgentStep ? 'var(--accent)' : 'var(--bg-surface)',
                                 color: isAgentStep ? '#fff' : 'var(--text-muted)',
                                 fontFamily: 'var(--font-mono)',
                               }}
                             >
+                              <span className="font-dot text-[10px] opacity-70">
+                                {String(i + 1).padStart(2, '0')}
+                              </span>
                               {chipLabel}
-                            </Chip>
+                            </Badge>
                           )}
                           <div
-                            className={`text-[13px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
+                            className={`text-[14px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
                             style={{
                               color: showChip ? 'var(--text-primary)' : 'var(--text-muted)',
                               fontFamily: 'var(--font-body)',
@@ -212,10 +220,8 @@ export default function AgentStepCard({
                     const label = notifLabel[notif.type] ?? 'Update';
                     return (
                       <div key={i} className="flex flex-col gap-0.5 animate-step-in">
-                        <Chip
-                          size="sm"
-                          variant="soft"
-                          className={`h-[20px] px-1 text-[11px] font-medium transition-opacity whitespace-nowrap w-fit ${isLast ? 'opacity-100' : 'opacity-50'}`}
+                        <Badge
+                          className={`h-[20px] px-1 rounded-sm text-[11px] font-medium transition-opacity whitespace-nowrap w-fit border-0 ${isLast ? 'opacity-100' : 'opacity-50'}`}
                           style={{
                             background: 'var(--bg-surface)',
                             color: 'var(--text-muted)',
@@ -223,9 +229,9 @@ export default function AgentStepCard({
                           }}
                         >
                           {label}
-                        </Chip>
+                        </Badge>
                         <div
-                          className={`text-[13px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
+                          className={`text-[14px] leading-[1.6] ${isLast ? 'font-medium' : ''}`}
                           style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}
                         >
                           {notif.content}
@@ -241,9 +247,9 @@ export default function AgentStepCard({
                   })}
                 </div>
               )}
-            </Accordion.Body>
-          </Accordion.Panel>
-        </Accordion.Item>
+            </>
+          </AccordionContent>
+        </AccordionItem>
       </Accordion>
 
       {metadata.type === 'waiting_approval' && metadata.options && (
@@ -294,7 +300,7 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
 
   return (
     <div
-      className="mt-3 rounded-2xl overflow-hidden transition-opacity duration-500"
+      className="corner-ticks relative mt-3 rounded-md overflow-hidden transition-opacity duration-500"
       style={{
         opacity: confirmed ? 0 : 1,
         border: '1px solid var(--border)',
@@ -325,7 +331,7 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
       {/* Summary */}
       {summary && (
         <p
-          className="px-4 pt-3 text-[13px] leading-[1.6]"
+          className="px-4 pt-3 text-[14px] leading-[1.6]"
           style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}
         >
           {summary}
@@ -344,7 +350,7 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
               type="button"
               disabled={selected !== null}
               onClick={() => handleSelect(i)}
-              className="w-full text-left rounded-xl px-4 py-3 transition-all duration-200 outline-none"
+              className="w-full text-left rounded-md px-4 py-3 transition-all duration-200 outline-none"
               style={{
                 background: isSelected ? 'var(--text-primary)' : 'var(--bg-surface)',
                 border: `1.5px solid ${isSelected ? 'var(--text-primary)' : 'var(--border)'}`,
@@ -390,7 +396,7 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {option.recommended && (
                         <span
-                          className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded-full"
+                          className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded-sm"
                           style={{
                             fontFamily: 'var(--font-mono)',
                             background: isSelected ? 'rgba(255,255,255,0.15)' : 'var(--accent)',
@@ -402,7 +408,7 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
                         </span>
                       )}
                       <span
-                        className="text-[13px] font-medium leading-snug"
+                        className="text-[14px] font-medium leading-snug"
                         style={{
                           color: isSelected ? 'var(--bg-elevated)' : 'var(--text-primary)',
                           fontFamily: 'var(--font-body)',
@@ -413,7 +419,7 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
                     </div>
                     {option.details && (
                       <p
-                        className="text-[12px] leading-[1.5] mt-0.5"
+                        className="text-[13px] leading-[1.5] mt-0.5"
                         style={{
                           color: isSelected ? 'rgba(247,246,244,0.6)' : 'var(--text-muted)',
                           fontFamily: 'var(--font-body)',
@@ -427,7 +433,7 @@ function ApprovalCard({ options, summary, threadId }: ApprovalCardProps) {
 
                 {option.price && (
                   <span
-                    className="shrink-0 text-[13px] font-semibold tabular-nums"
+                    className="shrink-0 text-[14px] font-semibold tabular-nums"
                     style={{
                       color: isSelected ? 'var(--bg-elevated)' : 'var(--text-primary)',
                       fontFamily: 'var(--font-body)',

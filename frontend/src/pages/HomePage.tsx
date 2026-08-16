@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ChatInput, { type ImageAttachment } from '../components/ChatInput';
 import { api } from '../lib/api';
 import { useThreadList } from '../hooks/useThreadList';
-import { Menu } from 'lucide-react';
+import { Menu, PanelLeft } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 
 const SUGGESTIONS = ['Make a call', 'Research something', 'Craft a message', 'Book something'];
@@ -20,7 +20,7 @@ export default function HomePage() {
   const [inputVal, setInputVal] = useState('');
   const navigate = useNavigate();
   const { refresh } = useThreadList();
-  const { toggleSidebar } = useUIStore();
+  const { toggleSidebar, isSidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
 
   const handleSend = async (message: string, images?: ImageAttachment[]) => {
     setSending(true);
@@ -51,15 +51,29 @@ export default function HomePage() {
       className="flex-1 flex flex-col items-center justify-center px-4 md:px-6 py-16 relative"
       style={{ background: 'var(--bg-page)' }}
     >
-      <div className="absolute top-0 left-0 right-0 p-4 lg:hidden flex justify-between items-center">
+      {/* Same 52px row height as ChatHeader, so icons land on the same line
+          across pages while the sidebar collapses/expands — no border here,
+          this page stays the calm, chrome-free landing screen */}
+      <div className="absolute top-0 left-0 right-0 h-[52px] px-4 flex justify-between items-center">
         <button
           onClick={toggleSidebar}
           aria-label="Toggle Menu"
-          className="w-9 h-9 flex items-center justify-center rounded-md transition-colors"
+          className="lg:hidden w-9 h-9 flex items-center justify-center rounded-sm transition-colors"
           style={{ color: 'var(--text-hint)' }}
         >
           <Menu size={20} strokeWidth={2} />
         </button>
+        {/* Desktop-only expand affordance — only rendered while the rail is collapsed */}
+        {isSidebarCollapsed && (
+          <button
+            onClick={toggleSidebarCollapsed}
+            aria-label="Expand sidebar"
+            className="hidden lg:flex w-9 h-9 items-center justify-center rounded-sm transition-colors"
+            style={{ color: 'var(--text-hint)' }}
+          >
+            <PanelLeft size={18} strokeWidth={1.75} />
+          </button>
+        )}
       </div>
       <div className="w-full max-w-2xl flex flex-col items-center gap-8 mt-8 lg:mt-0">
         {/* ── Greeting label — entrance: delay 0ms ────────────────── */}
@@ -68,8 +82,8 @@ export default function HomePage() {
           style={{ animationDelay: '0ms' }}
         >
           <span
-            className="text-[14px] tracking-[0.16em] uppercase"
-            style={{ fontFamily: 'var(--font-dot)', color: 'var(--text-muted)' }}
+            className="font-dot text-[14px] tracking-[0.16em] uppercase"
+            style={{ color: 'var(--text-muted)' }}
           >
             {getGreeting()}
           </span>
@@ -81,12 +95,12 @@ export default function HomePage() {
 
         {/* ── Hero heading — entrance: delay 60ms ─────────────────── */}
         <h1
-          className="font-semibold text-center leading-[1.15] whitespace-nowrap animate-fade-up"
+          className="font-extrabold text-center leading-[1.15] whitespace-nowrap animate-fade-up"
           style={{
-            color: 'var(--text-primary)',
             fontFamily: 'var(--font-body)',
-            letterSpacing: '-0.03em',
-            fontSize: 'clamp(28px, 3.5vw, 48px)',
+            color: 'var(--text-primary)',
+            letterSpacing: '-0.025em',
+            fontSize: 'clamp(26px, 3.3vw, 44px)',
             animationDelay: '60ms',
             transition: 'transform 200ms ease',
           }}
@@ -117,7 +131,7 @@ export default function HomePage() {
               key={s}
               type="button"
               onClick={() => setInputVal(s)}
-              className="chip-hover px-4 h-8 rounded-full text-[12px]"
+              className="chip-hover px-4 h-8 rounded-sm text-[13px]"
               style={{
                 fontFamily: 'var(--font-body)',
                 background: 'var(--bg-elevated)',

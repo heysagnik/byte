@@ -8,8 +8,7 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "paths": {
-      "@heroui/react": ["../node_modules/@heroui/react/dist/index.d.ts"],
-      "@heroui/react/*": ["../node_modules/@heroui/react/dist/*"]
+      "@/*": ["./src/*"]
     },
     "allowImportingTsExtensions": true,
     "isolatedModules": true,

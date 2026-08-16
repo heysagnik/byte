@@ -1,16 +1,42 @@
 @import 'tailwindcss';
-@import '@heroui/react/styles';
+@import 'tw-animate-css';
 
-/* ─── Byte Design Tokens ───────────────────────────────────────────────────── */
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Byte Design Tokens — Nothing OS inspired: monochrome base, ─────────────
+   single sparing orange accent, sharp corners, dot-matrix accents ────────── */
 :root {
+  --radius: 0.4rem;
+
+  /* legacy app tokens (still referenced throughout components) */
   --bg-page: #f2f1ef;
-  --bg-surface: #edebe8;
+  --bg-surface: #e9e7e3;
   --bg-elevated: #f7f6f4;
-  --border: #dddbd8;
+  --border: #c9c6c0;
   --text-primary: #111110;
-  --text-muted: #888880;
-  --text-hint: #aaaaaa;
+  --text-muted: #5c5c54;
+  --text-hint: #79796f;
   --accent: #e05c20;
+  --image-outline: oklch(0 0 0 / 0.1);
+
+  /* shadcn/ui standard tokens, mapped onto the same monochrome palette */
+  --background: var(--bg-page);
+  --foreground: var(--text-primary);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--bg-surface);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-surface);
+  --muted-foreground: var(--text-muted);
+  --accent-bg: var(--bg-surface);
+  --accent-foreground: var(--text-primary);
+  --destructive: #d13a2f;
+  --input: var(--border);
+  --ring: var(--accent);
 
   /* Font families */
   --font-mono: 'Space Mono', 'Courier New', monospace;
@@ -21,13 +47,82 @@
 /* ─── Dark Mode Tokens ────────────────────────────────────────────────────── */
 .dark {
   --bg-page: #1e1e1c;
-  --bg-surface: #262624;
-  --bg-elevated: #2d2d2a;
-  --border: #3e3e3a;
-  --text-primary: #f2f1ef;
-  --text-muted: #999991;
-  --text-hint: #66665f;
+  --bg-surface: #2a2a27;
+  --bg-elevated: #323230;
+  --border: #4c4c46;
+  --text-primary: #f5f4f2;
+  --text-muted: #b3b3a9;
+  --text-hint: #8c8c81;
+  --image-outline: oklch(1 0 0 / 0.12);
   /* Accent stays bright orange */
+
+  --background: var(--bg-page);
+  --foreground: var(--text-primary);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--bg-surface);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-surface);
+  --muted-foreground: var(--text-muted);
+  --accent-bg: var(--bg-surface);
+  --accent-foreground: var(--text-primary);
+  --destructive: #e5695a;
+  --input: var(--border);
+  --ring: var(--accent);
+}
+
+/* ─── Tailwind v4 theme wiring ────────────────────────────────────────────── */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent-bg);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-dot-matrix: var(--font-dot);
+  --font-mono-app: var(--font-mono);
+
+  --animate-accordion-down: accordion-down 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-accordion-up: accordion-up 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
 }
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */
@@ -56,19 +151,142 @@ h6 {
   font-family: var(--font-mono);
 }
 
+.font-dot {
+  font-family: var(--font-dot);
+}
+
 [translate='no'] {
   -webkit-text-fill-color: inherit;
 }
 
-/* Global press scale */
+/* Global press scale — crisp, mechanical, not bouncy */
 button:active:not(:disabled),
 [role='button']:active:not(:disabled) {
   transform: scale(0.97);
-  transition: transform 100ms ease-out;
+  transition: transform 90ms ease-out;
 }
 
 .content-area {
   overflow-x: hidden;
+}
+
+/* ─── Hide scrollbar while keeping scroll behavior ────────────────────────── */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}
+
+/* ─── Nothing OS-style faint dot-grid texture ─────────────────────────────── */
+/* Uses ::before so the dimming only ever affects the texture, never the
+   element's own content — an opacity rule on the element itself would wash
+   out everything inside it (inputs, text, buttons), not just the dots. */
+.dot-grid-bg {
+  position: relative;
+}
+.dot-grid-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-position: -7px -7px;
+  pointer-events: none;
+  z-index: 0;
+}
+.dark .dot-grid-bg::before {
+  opacity: 0.5;
+}
+.dot-grid-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Uppercase, tracked-out technical label — the "STATUS / THREAD" look ──── */
+.label-glyph {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ─── Structural heading register — Space Mono, contrasts against font-body
+   for page/section titles, nav, and chrome. Never used for message content ── */
+.heading-mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+/* ─── Corner ticks — partial hardware-frame marks (top-left / bottom-right).
+   Requires the element to already establish a positioning context (relative/
+   fixed/absolute) via its own classes — this utility must never set position
+   itself, or it can silently fight a consumer's layout (e.g. a `fixed` modal). */
+.corner-ticks::before,
+.corner-ticks::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.corner-ticks::before {
+  top: -1px;
+  left: -1px;
+  border-top: 1px solid var(--text-hint);
+  border-left: 1px solid var(--text-hint);
+}
+.corner-ticks::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 1px solid var(--text-hint);
+  border-right: 1px solid var(--text-hint);
+}
+
+/* ─── Glyph meter — segmented equalizer bars standing in for a live indicator ─ */
+.glyph-meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 9px;
+  shrink: 0;
+}
+.glyph-meter span {
+  width: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  transform-origin: bottom;
+  animation: glyphBar 1.1s ease-in-out infinite;
+}
+.glyph-meter span:nth-child(1) {
+  height: 40%;
+  animation-delay: 0ms;
+}
+.glyph-meter span:nth-child(2) {
+  height: 100%;
+  animation-delay: 120ms;
+}
+.glyph-meter span:nth-child(3) {
+  height: 65%;
+  animation-delay: 240ms;
+}
+.glyph-meter span:nth-child(4) {
+  height: 85%;
+  animation-delay: 360ms;
+}
+@keyframes glyphBar {
+  0%,
+  100% {
+    transform: scaleY(0.45);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
 }
 
 /* ─── Fade-up entrance (staggered page load) ──────────────────────────────── */
@@ -194,8 +412,8 @@ button:active:not(:disabled),
 /* ─── Input focus glow ────────────────────────────────────────────────────── */
 .input-shell {
   transition:
-    box-shadow 200ms ease,
-    border-color 200ms ease;
+    box-shadow 150ms ease,
+    border-color 150ms ease;
 }
 .input-shell:focus-within {
   box-shadow:
@@ -205,7 +423,7 @@ button:active:not(:disabled),
 
 /* ─── Chip hover lift ─────────────────────────────────────────────────────── */
 .chip-hover {
-  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .chip-hover:hover {
   transform: translateY(-2px);
@@ -221,7 +439,7 @@ button:active:not(:disabled),
 @keyframes modalEnter {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
@@ -229,7 +447,7 @@ button:active:not(:disabled),
   }
 }
 .modal-enter {
-  animation: modalEnter 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: modalEnter 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* ─── Sidebar item hover background slide ─────────────────────────────────── */
@@ -242,10 +460,10 @@ button:active:not(:disabled),
   position: absolute;
   inset: 0;
   background: var(--bg-elevated);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 0;
 }
 .thread-item:hover::before {
